@@ -220,3 +220,7 @@ xcrun simctl launch booted com.evstats.EVLogger -tab car -demo -seedrecords
 
 本项目是个人自用的车况/电耗记录工具，与上汽、名爵（MG）及其关联公司无关，也未获得其授权或背书。
 「车辆数据接口」需要你自己提供并保证合法合规；因使用本软件产生的任何后果由使用者自行承担。
+
+---
+
+关键词：名爵 MG4、MG4 EV、荣威、上汽、车况、电耗、续航达成率、充电记录、电动车记账、SwiftUI、iOS 小组件
