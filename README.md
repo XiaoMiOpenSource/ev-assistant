@@ -89,8 +89,8 @@
 
 ```bash
 cd mg4mate
-../bin/xcodegen/bin/xcodegen generate        # 生成 MG4Mate.xcodeproj
-./scripts/build_device.sh                    # Release → build-device/
+xcodegen generate                           # 生成 MG4Mate.xcodeproj（brew install xcodegen）
+./scripts/build_device.sh                    # Release → build-device/（内部会自动跑 xcodegen）
 ./scripts/package_ipa.sh                     # ad-hoc 注入 entitlements → dist/
 ```
 

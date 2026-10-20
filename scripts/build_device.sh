@@ -4,7 +4,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "==> xcodegen generate"
-../bin/xcodegen/bin/xcodegen generate >/dev/null
+# 优先用 PATH 里的 xcodegen（brew install xcodegen），找不到再用仓库旁的便携版
+if command -v xcodegen >/dev/null 2>&1; then
+  xcodegen generate >/dev/null
+elif [ -x ../bin/xcodegen/bin/xcodegen ]; then
+  ../bin/xcodegen/bin/xcodegen generate >/dev/null
+else
+  echo "缺少 xcodegen：brew install xcodegen"; exit 1
+fi
 
 echo "==> xcodebuild Release (generic/platform=iOS)"
 xcodebuild -project MG4Mate.xcodeproj -scheme MG4Mate \
