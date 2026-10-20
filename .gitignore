@@ -1,0 +1,8 @@
+# Xcode / 构建产物
+build/
+build-sim/
+build-device/
+dist/
+*.xcuserstate
+xcuserdata/
+.DS_Store

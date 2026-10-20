@@ -1,0 +1,596 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04FF60E4FC38EDB77FFD006F /* BackupCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56B310E04941CE465B1DAA60 /* BackupCenterView.swift */; };
+		1A5CCBD20F1556B8AB54D2B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3A6EEC4486E66A0CBBE776AA /* Assets.xcassets */; };
+		1A7360C406867FE1B41CAAAB /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB50D421A33F66A037C08751 /* Model.swift */; };
+		2B8E005CA1B8F7C5CA3B9C6B /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CD2509B3FCDD675F31763BC /* WidgetViews.swift */; };
+		358CD504583EB978C6DB93C7 /* CarSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1D04E91F7EAA5D693B8339 /* CarSettingsView.swift */; };
+		41793156D668981595CC7A9B /* MG4Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD6AB189028654969FB15EA /* MG4Store.swift */; };
+		43E011AC25D10239B4020DD3 /* MG4MateWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 72EDBDC63D0C118BF104D1BB /* MG4MateWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4835B5E534DC89217BDB3C14 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB50D421A33F66A037C08751 /* Model.swift */; };
+		4FFD3739059D80EDF1BCB5DD /* EVLoggerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682D86DF3CA5AF037C52D3A6 /* EVLoggerWidget.swift */; };
+		5A2DB8F99B08705E5B7D0197 /* Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5F962E342A19EBA59B247B /* Service.swift */; };
+		5B619A66663F50B74CF859E1 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061F1E7898B83C7552175EB5 /* Persistence.swift */; };
+		62C93E314D4D06DB6C06ED9E /* RecordFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AE9D35457A7AC2EA3163AE3 /* RecordFormView.swift */; };
+		74B7DDFDB8E5AD71B0A47457 /* WidgetParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C84D04FC290375C3AB6F080 /* WidgetParts.swift */; };
+		83526DF0BCA7BED4F812721C /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 344AF3E4F03475067C6BC12D /* DashboardView.swift */; };
+		890A5C92013370CC6EA74349 /* CarModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA4863D7D30F10D52C2354B /* CarModel.swift */; };
+		8AEED1E20F46512A59C0BC43 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CD2509B3FCDD675F31763BC /* WidgetViews.swift */; };
+		8ED966FEE7811AF4C3CE1137 /* SharedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5942FBA65B822E1104647F51 /* SharedData.swift */; };
+		91023842A5CCF0C3D6347DB2 /* EVStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6B05C06B45EB9F083D0F04 /* EVStore.swift */; };
+		95DED69FD25E696B9018BFE6 /* DebugSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82ADC38CA493A30D723DB1F6 /* DebugSeed.swift */; };
+		A0A2797BAEE1A9A0612F2B48 /* Calculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3A2FE8CEAE292843CF4138A /* Calculator.swift */; };
+		AECE04CB71C9DD82A816D42A /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 898E9D6F4FC31D1E28AB4241 /* StatsView.swift */; };
+		B431953DA5AE4F9E23849161 /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCA816C68BCB1C81AB190AD9 /* BackupService.swift */; };
+		BE60F7894FE33984D0B2E7E4 /* DesignSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAB5C2D01CD3B76F07760459 /* DesignSupport.swift */; };
+		BF1D6E96DA3BC475EF3AF411 /* MG4Widget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C313970A5DD32CEB8022AB6B /* MG4Widget.swift */; };
+		CB17AF17ED80C38F57F4B27B /* MG4MateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6A1D68F5F99AEF0BA8523B5 /* MG4MateApp.swift */; };
+		CB2F5ADAC761354E4F6323F7 /* SharePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9BE5E78645B90BED6CC9422 /* SharePresenter.swift */; };
+		D602511E5D487AC0CBC8560D /* Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5F962E342A19EBA59B247B /* Service.swift */; };
+		DFBDE4946D94DB40F5A537A7 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E007C77DF9589BA0B6DF81F5 /* SettingsView.swift */; };
+		E35E99ABFEFFF49CEF1DB302 /* WidgetParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C84D04FC290375C3AB6F080 /* WidgetParts.swift */; };
+		E433A8C89734197585472A56 /* MG4MateWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18860A9B9C2FFC50BB973BA /* MG4MateWidgetBundle.swift */; };
+		EAFD6BD4070A61C4979C51EE /* SharedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5942FBA65B822E1104647F51 /* SharedData.swift */; };
+		EE33187B26E42E85900739E6 /* MG4Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD6AB189028654969FB15EA /* MG4Store.swift */; };
+		F047BDAFE42BC04B154637D2 /* RateDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC133B3CD007A4DF78C1B72D /* RateDetailView.swift */; };
+		F35C3FF05257B697B0152CE2 /* RecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4427C6D1898F17C63C07F802 /* RecordsView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C60589A03AF9FB912F61CFF0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 10223B0B42176FB34DC4CCBC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8390B786AB0DD88B22E31656;
+			remoteInfo = MG4MateWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		12ED700B1C4701D0EDC6F9BC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				43E011AC25D10239B4020DD3 /* MG4MateWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		061F1E7898B83C7552175EB5 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
+		0AD6AB189028654969FB15EA /* MG4Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MG4Store.swift; sourceTree = "<group>"; };
+		1AE9D35457A7AC2EA3163AE3 /* RecordFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordFormView.swift; sourceTree = "<group>"; };
+		2CA4863D7D30F10D52C2354B /* CarModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarModel.swift; sourceTree = "<group>"; };
+		344AF3E4F03475067C6BC12D /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		3A6EEC4486E66A0CBBE776AA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3D1D04E91F7EAA5D693B8339 /* CarSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarSettingsView.swift; sourceTree = "<group>"; };
+		4427C6D1898F17C63C07F802 /* RecordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsView.swift; sourceTree = "<group>"; };
+		56B310E04941CE465B1DAA60 /* BackupCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupCenterView.swift; sourceTree = "<group>"; };
+		5942FBA65B822E1104647F51 /* SharedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedData.swift; sourceTree = "<group>"; };
+		682D86DF3CA5AF037C52D3A6 /* EVLoggerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EVLoggerWidget.swift; sourceTree = "<group>"; };
+		6D5F962E342A19EBA59B247B /* Service.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Service.swift; sourceTree = "<group>"; };
+		72EDBDC63D0C118BF104D1BB /* MG4MateWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MG4MateWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7C84D04FC290375C3AB6F080 /* WidgetParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetParts.swift; sourceTree = "<group>"; };
+		82ADC38CA493A30D723DB1F6 /* DebugSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugSeed.swift; sourceTree = "<group>"; };
+		898E9D6F4FC31D1E28AB4241 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		9CD2509B3FCDD675F31763BC /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
+		A3A2FE8CEAE292843CF4138A /* Calculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Calculator.swift; sourceTree = "<group>"; };
+		B18860A9B9C2FFC50BB973BA /* MG4MateWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MG4MateWidgetBundle.swift; sourceTree = "<group>"; };
+		B9BE5E78645B90BED6CC9422 /* SharePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePresenter.swift; sourceTree = "<group>"; };
+		BAB5C2D01CD3B76F07760459 /* DesignSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSupport.swift; sourceTree = "<group>"; };
+		C313970A5DD32CEB8022AB6B /* MG4Widget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MG4Widget.swift; sourceTree = "<group>"; };
+		C6A1D68F5F99AEF0BA8523B5 /* MG4MateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MG4MateApp.swift; sourceTree = "<group>"; };
+		CC133B3CD007A4DF78C1B72D /* RateDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateDetailView.swift; sourceTree = "<group>"; };
+		DB50D421A33F66A037C08751 /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
+		E007C77DF9589BA0B6DF81F5 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		E49090287188AA16AD5245BE /* MG4Mate.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MG4Mate.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FCA816C68BCB1C81AB190AD9 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
+		FD6B05C06B45EB9F083D0F04 /* EVStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EVStore.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1674FCAF7872CA443FC86009 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				42CE05C7D699938F636B9177 /* Car */,
+				19CECF4EAD4ECC30784D9412 /* EV */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		19CECF4EAD4ECC30784D9412 /* EV */ = {
+			isa = PBXGroup;
+			children = (
+				5942FBA65B822E1104647F51 /* SharedData.swift */,
+			);
+			path = EV;
+			sourceTree = "<group>";
+		};
+		2EA08697C54DBF8FFCF18236 /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				682D86DF3CA5AF037C52D3A6 /* EVLoggerWidget.swift */,
+				B18860A9B9C2FFC50BB973BA /* MG4MateWidgetBundle.swift */,
+				C313970A5DD32CEB8022AB6B /* MG4Widget.swift */,
+			);
+			path = Widget;
+			sourceTree = "<group>";
+		};
+		2FF8813BF9E2C66210CF9224 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E49090287188AA16AD5245BE /* MG4Mate.app */,
+				72EDBDC63D0C118BF104D1BB /* MG4MateWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		42CE05C7D699938F636B9177 /* Car */ = {
+			isa = PBXGroup;
+			children = (
+				0AD6AB189028654969FB15EA /* MG4Store.swift */,
+				DB50D421A33F66A037C08751 /* Model.swift */,
+				6D5F962E342A19EBA59B247B /* Service.swift */,
+				7C84D04FC290375C3AB6F080 /* WidgetParts.swift */,
+				9CD2509B3FCDD675F31763BC /* WidgetViews.swift */,
+			);
+			path = Car;
+			sourceTree = "<group>";
+		};
+		44438246E9AEAC607CAA6CD0 = {
+			isa = PBXGroup;
+			children = (
+				AAD8C4FA052137D39BF8104A /* App */,
+				ECAA9E682E94550DEE3549CD /* Resources */,
+				1674FCAF7872CA443FC86009 /* Shared */,
+				2EA08697C54DBF8FFCF18236 /* Widget */,
+				2FF8813BF9E2C66210CF9224 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AAD8C4FA052137D39BF8104A /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B30201FEF1D2E7430665D63E /* Core */,
+				56B310E04941CE465B1DAA60 /* BackupCenterView.swift */,
+				3D1D04E91F7EAA5D693B8339 /* CarSettingsView.swift */,
+				344AF3E4F03475067C6BC12D /* DashboardView.swift */,
+				C6A1D68F5F99AEF0BA8523B5 /* MG4MateApp.swift */,
+				CC133B3CD007A4DF78C1B72D /* RateDetailView.swift */,
+				1AE9D35457A7AC2EA3163AE3 /* RecordFormView.swift */,
+				4427C6D1898F17C63C07F802 /* RecordsView.swift */,
+				E007C77DF9589BA0B6DF81F5 /* SettingsView.swift */,
+				898E9D6F4FC31D1E28AB4241 /* StatsView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		B30201FEF1D2E7430665D63E /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				FCA816C68BCB1C81AB190AD9 /* BackupService.swift */,
+				A3A2FE8CEAE292843CF4138A /* Calculator.swift */,
+				2CA4863D7D30F10D52C2354B /* CarModel.swift */,
+				82ADC38CA493A30D723DB1F6 /* DebugSeed.swift */,
+				BAB5C2D01CD3B76F07760459 /* DesignSupport.swift */,
+				FD6B05C06B45EB9F083D0F04 /* EVStore.swift */,
+				061F1E7898B83C7552175EB5 /* Persistence.swift */,
+				B9BE5E78645B90BED6CC9422 /* SharePresenter.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		ECAA9E682E94550DEE3549CD /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				3A6EEC4486E66A0CBBE776AA /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		08A132E40989BB905A36BDC5 /* MG4Mate */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2682E363FBB3CB420281AEEE /* Build configuration list for PBXNativeTarget "MG4Mate" */;
+			buildPhases = (
+				D9A4F8B85C294467F2985B24 /* Sources */,
+				3B5C22640E6E2230032BA556 /* Resources */,
+				12ED700B1C4701D0EDC6F9BC /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B8EC23E80A7A455B8CE78272 /* PBXTargetDependency */,
+			);
+			name = MG4Mate;
+			packageProductDependencies = (
+			);
+			productName = MG4Mate;
+			productReference = E49090287188AA16AD5245BE /* MG4Mate.app */;
+			productType = "com.apple.product-type.application";
+		};
+		8390B786AB0DD88B22E31656 /* MG4MateWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3AABDC383BB1AC179BD37528 /* Build configuration list for PBXNativeTarget "MG4MateWidget" */;
+			buildPhases = (
+				01D46E2074D74B181A4B815F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MG4MateWidget;
+			packageProductDependencies = (
+			);
+			productName = MG4MateWidget;
+			productReference = 72EDBDC63D0C118BF104D1BB /* MG4MateWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		10223B0B42176FB34DC4CCBC /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					08A132E40989BB905A36BDC5 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Manual;
+					};
+					8390B786AB0DD88B22E31656 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 013BC13A2679D812C18B5F8A /* Build configuration list for PBXProject "MG4Mate" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 44438246E9AEAC607CAA6CD0;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 2FF8813BF9E2C66210CF9224 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				08A132E40989BB905A36BDC5 /* MG4Mate */,
+				8390B786AB0DD88B22E31656 /* MG4MateWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3B5C22640E6E2230032BA556 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A5CCBD20F1556B8AB54D2B0 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		01D46E2074D74B181A4B815F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4FFD3739059D80EDF1BCB5DD /* EVLoggerWidget.swift in Sources */,
+				E433A8C89734197585472A56 /* MG4MateWidgetBundle.swift in Sources */,
+				EE33187B26E42E85900739E6 /* MG4Store.swift in Sources */,
+				BF1D6E96DA3BC475EF3AF411 /* MG4Widget.swift in Sources */,
+				1A7360C406867FE1B41CAAAB /* Model.swift in Sources */,
+				5A2DB8F99B08705E5B7D0197 /* Service.swift in Sources */,
+				8ED966FEE7811AF4C3CE1137 /* SharedData.swift in Sources */,
+				E35E99ABFEFFF49CEF1DB302 /* WidgetParts.swift in Sources */,
+				2B8E005CA1B8F7C5CA3B9C6B /* WidgetViews.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9A4F8B85C294467F2985B24 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04FF60E4FC38EDB77FFD006F /* BackupCenterView.swift in Sources */,
+				B431953DA5AE4F9E23849161 /* BackupService.swift in Sources */,
+				A0A2797BAEE1A9A0612F2B48 /* Calculator.swift in Sources */,
+				890A5C92013370CC6EA74349 /* CarModel.swift in Sources */,
+				358CD504583EB978C6DB93C7 /* CarSettingsView.swift in Sources */,
+				83526DF0BCA7BED4F812721C /* DashboardView.swift in Sources */,
+				95DED69FD25E696B9018BFE6 /* DebugSeed.swift in Sources */,
+				BE60F7894FE33984D0B2E7E4 /* DesignSupport.swift in Sources */,
+				91023842A5CCF0C3D6347DB2 /* EVStore.swift in Sources */,
+				CB17AF17ED80C38F57F4B27B /* MG4MateApp.swift in Sources */,
+				41793156D668981595CC7A9B /* MG4Store.swift in Sources */,
+				4835B5E534DC89217BDB3C14 /* Model.swift in Sources */,
+				5B619A66663F50B74CF859E1 /* Persistence.swift in Sources */,
+				F047BDAFE42BC04B154637D2 /* RateDetailView.swift in Sources */,
+				62C93E314D4D06DB6C06ED9E /* RecordFormView.swift in Sources */,
+				F35C3FF05257B697B0152CE2 /* RecordsView.swift in Sources */,
+				D602511E5D487AC0CBC8560D /* Service.swift in Sources */,
+				DFBDE4946D94DB40F5A537A7 /* SettingsView.swift in Sources */,
+				CB2F5ADAC761354E4F6323F7 /* SharePresenter.swift in Sources */,
+				EAFD6BD4070A61C4979C51EE /* SharedData.swift in Sources */,
+				AECE04CB71C9DD82A816D42A /* StatsView.swift in Sources */,
+				74B7DDFDB8E5AD71B0A47457 /* WidgetParts.swift in Sources */,
+				8AEED1E20F46512A59C0BC43 /* WidgetViews.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B8EC23E80A7A455B8CE78272 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8390B786AB0DD88B22E31656 /* MG4MateWidget */;
+			targetProxy = C60589A03AF9FB912F61CFF0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		00B47F90704BBE238B2A5262 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Resources/MG4Mate.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.evstats.EVLogger;
+				PRODUCT_NAME = MG4Mate;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		13A34F76849C2B93DC9666C3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Resources/MG4Mate.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.evstats.EVLogger;
+				PRODUCT_NAME = MG4Mate;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		13FE8929FEDA6CFEA4A663E8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 23;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.4;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		1C5104F619BD175FB789F6CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Resources/Widget/MG4MateWidget.entitlements;
+				INFOPLIST_FILE = Resources/Widget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.evstats.EVLogger.widget;
+				PRODUCT_NAME = MG4MateWidget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		1C8792E8222E3E32073A93E5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Resources/Widget/MG4MateWidget.entitlements;
+				INFOPLIST_FILE = Resources/Widget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.evstats.EVLogger.widget;
+				PRODUCT_NAME = MG4MateWidget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		94B8D7592214CBBC4B98B3C0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 23;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.4;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		013BC13A2679D812C18B5F8A /* Build configuration list for PBXProject "MG4Mate" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94B8D7592214CBBC4B98B3C0 /* Debug */,
+				13FE8929FEDA6CFEA4A663E8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2682E363FBB3CB420281AEEE /* Build configuration list for PBXNativeTarget "MG4Mate" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				13A34F76849C2B93DC9666C3 /* Debug */,
+				00B47F90704BBE238B2A5262 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3AABDC383BB1AC179BD37528 /* Build configuration list for PBXNativeTarget "MG4MateWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1C5104F619BD175FB789F6CE /* Debug */,
+				1C8792E8222E3E32073A93E5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 10223B0B42176FB34DC4CCBC /* Project object */;
+}
