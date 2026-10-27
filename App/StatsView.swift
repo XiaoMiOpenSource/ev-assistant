@@ -508,8 +508,8 @@ struct StatsView: View {
             let ct = ChargerType(rawValue: row.record.chargerType) ?? .home
             var a = map[ct] ?? ChargerAgg()
             a.costAll += row.record.costCNY
-            if row.valid {
-                a.cost += row.record.costCNY
+            if row.valid, !row.isPending {
+                a.cost += row.isAggregated ? row.pairedCostCNY : row.record.costCNY
                 a.dist += row.distanceKm ?? 0
                 a.n += 1
             }
@@ -623,6 +623,8 @@ enum MonthlyPDFBuilder {
                 var line = "\(dday.string(from: r.record.date))  \(ct)  电量 \(Fmt.dec(r.record.energyKWh, 1)) kWh  ¥\(Fmt.dec(r.record.costCNY, 2))  里程 \(Fmt.dec(r.record.odometerKm, 0)) km"
                 if r.valid {
                     line += "  (行驶 \(Fmt.dec(r.distanceKm, 0)) km · \(Fmt.dec(r.consumption, 1)) kWh/100km)"
+                } else if r.isPending {
+                    line += "  (短区间与相邻记录合并计算)"
                 } else if r.kind == .first {
                     line += "  (基准记录)"
                 } else {

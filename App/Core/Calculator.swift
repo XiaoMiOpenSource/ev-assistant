@@ -2,14 +2,22 @@ import Foundation
 
 // MARK: - 派生计算引擎（纯函数、可单测；口径与蓝图/Web 原型一致）
 
-enum RowKind { case first, ok, rollback }
+enum RowKind { case first, ok, rollback, pending }
 
 struct DerivedRow {
     let record: ChargeRecord
     let kind: RowKind
     let distanceKm: Double?       // 本笔行驶里程 = 本次读数 − 上一笔读数
     let consumption: Double?      // kWh/100km（含充电损耗）
-    let costPerKm: Double?        // 元/km
+    let costPerKm: Double?        // 元/km（合并区间时使用合计费用 ÷ 合计里程）
+    /// 配对统计使用的充电量/费用；合并区间在最后一笔一次计入，避免漏算或重复。
+    let pairedEnergyKWh: Double
+    let pairedCostCNY: Double
+    /// 合并区间的总里程；nil 表示普通单笔区间，待累计行也没有已完成区间。
+    let groupDistanceKm: Double?
+    var isAggregated: Bool { groupDistanceKm != nil }
+    /// 短区间暂不与充电量配对；里程仍计入总里程，等后续记录一起结算。
+    var isPending: Bool { kind == .pending }
     var valid: Bool { distanceKm != nil && distanceKm! > 0 }
 
     /// 隐含电耗的可信区间（kWh/100km）。漏记一次充电会让区间里程虚增、
@@ -22,7 +30,7 @@ struct DerivedRow {
         return DerivedRow.plausibleRange.contains(c)
     }
 
-    /// 可参与效率/达成率聚合的行
+    /// 可参与充电量-里程效率聚合的行；SOC 续航口径独立检查自己的数据。
     var countable: Bool { valid && plausible }
 }
 
@@ -52,14 +60,70 @@ enum Calculator {
                     if r.costCNY > 0 { ckm = r.costCNY / d }
                 } else if d < 0 { kind = .rollback }
             }
-            rows.append(DerivedRow(record: r, kind: kind, distanceKm: dist, consumption: cons, costPerKm: ckm))
+            rows.append(DerivedRow(record: r, kind: kind, distanceKm: dist, consumption: cons, costPerKm: ckm,
+                                   pairedEnergyKWh: 0, pairedCostCNY: 0, groupDistanceKm: nil))
             // 里程回退多半是录入错误：保留原基准，避免下一笔里程被虚增
             if r.odometerKm.isFinite, kind != .rollback { prevOdo = r.odometerKm }
+        }
+        // 刚充完又充一次时，两次读数可能只差几公里。把整笔充电量除以这
+        // 几公里会产生几百 kWh/100km 的假高电耗。失真短区间只与相邻区间
+        // 按“充电量合计 ÷ 里程合计”计算，不跨正常记录，也不隐藏真实高电耗。
+        let minimumDistanceKm = 30.0
+        let shortOutliers = Set(rows.indices.filter { i in
+            guard rows[i].valid, let distance = rows[i].distanceKm,
+                  distance < minimumDistanceKm, let consumption = rows[i].consumption
+            else { return false }
+            return !DerivedRow.plausibleRange.contains(consumption)
+        })
+        var groups: [(indices: ClosedRange<Int>, settle: Int)] = []
+        var i = 0
+        while i < rows.count {
+            guard shortOutliers.contains(i) else { i += 1; continue }
+            let start = i
+            while i + 1 < rows.count, shortOutliers.contains(i + 1) { i += 1 }
+            if i + 1 < rows.count, rows[i + 1].valid {
+                groups.append((start...(i + 1), i + 1))
+                i += 2 // 结算行不能被后续短区间再次占用
+            } else {
+                i += 1
+            }
+        }
+        // 反向处理没有下一笔的短区间；不与已完成的组合重叠。
+        i = rows.count - 1
+        while i >= 0 {
+            if shortOutliers.contains(i), !groups.contains(where: { $0.indices.contains(i) }) {
+                var start = i
+                while start > 0, shortOutliers.contains(start - 1),
+                      !groups.contains(where: { $0.indices.contains(start - 1) }) { start -= 1 }
+                if start > 0, rows[start - 1].valid,
+                   !groups.contains(where: { $0.indices.contains(start - 1) }) {
+                    groups.append(((start - 1)...i, start - 1))
+                }
+            }
+            i -= 1
+        }
+        for group in groups {
+            let indices = group.indices
+            let distance = indices.reduce(0.0) { $0 + (rows[$1].distanceKm ?? 0) }
+            let energy = indices.reduce(0.0) { $0 + rows[$1].record.energyKWh }
+            let cost = indices.reduce(0.0) { $0 + rows[$1].record.costCNY }
+            for index in indices where index != group.settle {
+                rows[index] = DerivedRow(record: rows[index].record, kind: .pending,
+                                         distanceKm: rows[index].distanceKm,
+                                         consumption: nil, costPerKm: nil,
+                                         pairedEnergyKWh: 0, pairedCostCNY: 0, groupDistanceKm: nil)
+            }
+            rows[group.settle] = DerivedRow(record: rows[group.settle].record, kind: .ok,
+                                            distanceKm: rows[group.settle].distanceKm,
+                                            consumption: energy > 0 ? energy / distance * 100 : nil,
+                                            costPerKm: cost > 0 ? cost / distance : nil,
+                                            pairedEnergyKWh: energy, pairedCostCNY: cost,
+                                            groupDistanceKm: distance)
         }
         return rows
     }
 
-    // 月度序列：E/D 只统计有效区间（口径自洽），费用与充电量为当月全部
+    // 月度序列：合并区间的配对电量/里程在结算记录所在月份计入；费用与总充电量仍按原记录月份统计。
     struct MonthPoint: Identifiable {
         var id: String { monthKey }
         let monthKey: String // "2026-06"
@@ -80,7 +144,7 @@ enum Calculator {
             let key = String(format: "%04d-%02d", comps.year ?? 0, comps.month ?? 0)
             var m = map[key] ?? (0, 0, 0, 0, 0)
             if row.countable {
-                m.e += row.record.energyKWh
+                m.e += row.isAggregated ? row.pairedEnergyKWh : row.record.energyKWh
                 m.d += row.distanceKm ?? 0
             }
             if row.valid { m.z += row.distanceKm ?? 0 }
@@ -97,7 +161,7 @@ enum Calculator {
     // 窗口内平均电耗（口径 A 依赖）
     static func weightAvg(_ rows: [DerivedRow], window: StatsWindow, now: Date = Date()) -> (cons: Double, E: Double, D: Double)? {
         let set = windowRows(rows, window: window, now: now).filter { $0.countable }
-        let E = set.reduce(0) { $0 + $1.record.energyKWh }
+        let E = set.reduce(0) { $0 + ($1.isAggregated ? $1.pairedEnergyKWh : $1.record.energyKWh) }
         let D = set.reduce(0) { $0 + ($1.distanceKm ?? 0) }
         if D <= 0 { return nil }
         return (E / D * 100, E, D)
@@ -115,7 +179,7 @@ enum Calculator {
     static func rangeRateA(rows: [DerivedRow], vehicle: Vehicle, window: StatsWindow, now: Date = Date()) -> RangeRateResult? {
         guard vehicle.ratedRangeKm > 0 else { return nil }
         let valid = windowRows(rows, window: window, now: now).filter { $0.countable }
-        let sumE = valid.reduce(0) { $0 + $1.record.energyKWh }
+        let sumE = valid.reduce(0) { $0 + ($1.isAggregated ? $1.pairedEnergyKWh : $1.record.energyKWh) }
         let sumD = valid.reduce(0) { $0 + ($1.distanceKm ?? 0) }
         guard sumD > 0, sumE > 0 else { return nil }
         let avgCons = sumE / sumD * 100
@@ -139,7 +203,7 @@ enum Calculator {
         guard vehicle.ratedRangeKm > 0 else { return ([], nil) }
         for i in 1..<rows.count {
             let prev = rows[i - 1], cur = rows[i]
-            guard cur.countable,
+            guard cur.valid, !cur.isPending, !cur.isAggregated,
                   let after = prev.record.socAfter, after >= 90,
                   let before = cur.record.socBefore, before >= 0,
                   before < after,
@@ -202,7 +266,7 @@ enum Calculator {
             costAll: rows.reduce(0) { $0 + $1.record.costCNY },
             energyAll: rows.reduce(0) { $0 + $1.record.energyKWh },
             dist: valid.reduce(0) { $0 + ($1.distanceKm ?? 0) },
-            energyPair: countable.reduce(0) { $0 + $1.record.energyKWh },
+            energyPair: countable.reduce(0) { $0 + ($1.isAggregated ? $1.pairedEnergyKWh : $1.record.energyKWh) },
             consDist: countable.reduce(0) { $0 + ($1.distanceKm ?? 0) },
             count: rows.count,
             rows: valid
@@ -220,7 +284,7 @@ extension Calculator {
         var result: [UUID: Double] = [:]
         for i in 1..<rows.count {
             let prev = rows[i - 1], cur = rows[i]
-            guard cur.countable,
+            guard cur.valid, !cur.isPending, !cur.isAggregated,
                   let dist = cur.distanceKm,
                   let after = prev.record.socAfter, after >= 90,
                   let before = cur.record.socBefore, before < after
@@ -232,9 +296,9 @@ extension Calculator {
         return result
     }
 
-    /// 被排除在效率统计之外的行数（有效里程但隐含电耗离谱，通常是漏记一次充电）
+    /// 被排除在效率统计之外的行数（有效里程但隐含电耗离谱；待累计行不算异常）。
     static func excludedCount(_ rows: [DerivedRow]) -> Int {
-        rows.filter { $0.valid && !$0.plausible }.count
+        rows.filter { $0.valid && !$0.isPending && !$0.plausible }.count
     }
 }
 

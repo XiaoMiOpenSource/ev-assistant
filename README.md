@@ -110,6 +110,15 @@ xcodegen generate                           # 生成 MG4Mate.xcodeproj（brew in
 com.apple.security.application-groups = [group.com.evstats.EVLogger, group.mg4widget]
 ```
 
+## GitHub Actions 构建 IPA
+
+仓库提供 `.github/workflows/build-ipa.yml`：推送到 `main`，或在 GitHub → **Actions → Build iOS IPA → Run workflow** 手动运行。
+
+- Runner：`macos-15` / Xcode 16.2，主 App 与 Widget 的最低系统版本均为 **iOS 16.0**。
+- 不需要 Apple 开发者证书：先构建未签名真机包，再 ad-hoc 重签并注入 App Group 权限。
+- 运行完成后在对应 Run 的 **Artifacts** 下载 `EVHelper-iOS16-*`：内含 `.ipa`、`.tipa` 和 `SHA256SUMS.txt`，保留 14 天。
+- `.tipa` 供 TrollStore 安装；`.ipa` 可用个人/企业签名工具补签。工作流不使用或保存 Gitee/GitHub 私人令牌，也无需配置 Secrets。
+
 ## 安装
 
 - **TrollStore**：把 `dist/EVHelper_v1.4.tipa` 传到手机，用 TrollStore 打开安装（与车况原来的安装方式一致）。

@@ -17,4 +17,4 @@ echo "==> xcodebuild Release (generic/platform=iOS)"
 xcodebuild -project MG4Mate.xcodeproj -scheme MG4Mate \
   -configuration Release -destination 'generic/platform=iOS' \
   -derivedDataPath build-device \
-  CODE_SIGNING_ALLOWED=NO build | grep -E "error:|BUILD|\*\*" || true
+  CODE_SIGNING_ALLOWED=NO build | tee build-device/xcodebuild.log | grep -E "error:|BUILD|\*\*"

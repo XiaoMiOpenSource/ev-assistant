@@ -1,0 +1,88 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'fix-record-consumption.patch'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build unsigned IPA for iOS 16+
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode and verify SDK
+        run: |
+          sudo xcode-select -s "$DEVELOPER_DIR"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          test -d /Applications/Xcode_16.2.app
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Verify iOS 16 deployment target
+        run: |
+          grep -q 'iOS: "16.0"' project.yml
+          grep -q 'IPHONEOS_DEPLOYMENT_TARGET: "16.0"' project.yml
+
+      - name: Build device app without a developer certificate
+        run: bash scripts/build_device.sh
+
+      - name: Package ad-hoc IPA and TrollStore tipa
+        run: bash scripts/package_ipa.sh
+
+      - name: Verify deployment target and bundles
+        run: |
+          APP=build-device/Build/Products/Release-iphoneos/MG4Mate.app
+          test "$(/usr/libexec/PlistBuddy -c 'Print MinimumOSVersion' "$APP/Info.plist")" = "16.0"
+          test -d "$APP/PlugIns/MG4MateWidget.appex"
+          test "$(/usr/libexec/PlistBuddy -c 'Print MinimumOSVersion' "$APP/PlugIns/MG4MateWidget.appex/Info.plist")" = "16.0"
+          test -n "$(find dist -maxdepth 1 -name '*.ipa' -print -quit)"
+          test -n "$(find dist -maxdepth 1 -name '*.tipa' -print -quit)"
+          for artifact in dist/*.ipa dist/*.tipa; do
+            unzip -t "$artifact"
+            unzip -l "$artifact" | grep -q 'Payload/MG4Mate.app/MG4Mate$'
+          done
+          (cd dist && shasum -a 256 *.ipa *.tipa > SHA256SUMS.txt)
+          cat dist/SHA256SUMS.txt
+
+      - name: Upload IPA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: EVHelper-iOS16-${{ github.run_number }}
+          path: |
+            dist/*.ipa
+            dist/*.tipa
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EVHelper-build-log-${{ github.run_number }}
+          path: build-device/xcodebuild.log
+          if-no-files-found: warn
+          retention-days: 7

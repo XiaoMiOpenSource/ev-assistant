@@ -175,7 +175,7 @@ struct RecordFormView: View {
     }
 
     // MARK: 实时预览（按插入位置推算：行驶里程 = 草稿 − 上一笔，与引擎同口径）
-    struct Preview { var kind: RowKind; var distance: Double?; var consumption: Double?; var costPerKm: Double? }
+    struct Preview { var kind: RowKind; var distance: Double?; var consumption: Double?; var costPerKm: Double?; var isAggregated = false }
     @State private var formID = UUID()
 
     @ViewBuilder private var livePreview: some View {
@@ -188,9 +188,13 @@ struct RecordFormView: View {
                 case .rollback:
                     Label("里程读数小于上一笔，该区间将被过滤，请检查是否填错", systemImage: "exclamationmark.triangle.fill")
                         .font(.footnote).foregroundColor(.orange)
+                case .pending:
+                    Label("短区间不单独计算，与相邻充电区间合并", systemImage: "clock.fill")
+                        .font(.footnote).foregroundStyle(.secondary)
                 case .ok:
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("实时预览（相对上一笔）").font(.caption).foregroundStyle(.secondary)
+                        Text(p.isAggregated ? "实时预览（合并相邻短区间）" : "实时预览（相对上一笔）")
+                            .font(.caption).foregroundStyle(.secondary)
                         HStack(spacing: 16) {
                             Text("行驶 \(Fmt.dec(p.distance, 0)) km").font(.subheadline.weight(.semibold))
                             Text("电耗 \(Fmt.dec(p.consumption, 1)) kWh/100km").font(.subheadline.weight(.semibold))
@@ -228,20 +232,12 @@ struct RecordFormView: View {
 
     private func previewResult() -> Preview? {
         guard let v = store.activeVehicle else { return nil }
-        let others = store.records
-            .filter { $0.vehicleID == v.id && $0.id != draft.id }
-            .sorted { a, b in a.date == b.date ? a.createdAt < b.createdAt : a.date < b.date }
-        // 插入位置
-        let ins = others.firstIndex { $0.date > draft.date || ($0.date == draft.date && $0.createdAt > draft.createdAt) } ?? others.count
-        guard ins > 0 else { return Preview(kind: .first, distance: nil, consumption: nil, costPerKm: nil) }
-        let prev = others[ins - 1]
-        let d = draft.odometerKm - prev.odometerKm
-        if d <= 0 {
-            return Preview(kind: .rollback, distance: nil, consumption: nil, costPerKm: nil)
-        }
-        let cons = draft.energyKWh > 0 ? draft.energyKWh / d * 100 : nil
-        let ckm = draft.costCNY > 0 ? draft.costCNY / d : nil
-        return Preview(kind: .ok, distance: d, consumption: cons, costPerKm: ckm)
+        let others = store.records.filter { $0.vehicleID == v.id && $0.id != draft.id }
+        // 草稿也走正式派生引擎，确保编辑/插入旧记录时的预览与保存后一致。
+        guard let row = Calculator.derivedRows(others + [draft], for: v.id).first(where: { $0.record.id == draft.id }) else { return nil }
+        return Preview(kind: row.kind, distance: row.distanceKm,
+                       consumption: row.consumption, costPerKm: row.costPerKm,
+                       isAggregated: row.isAggregated)
     }
 
     private func save() {

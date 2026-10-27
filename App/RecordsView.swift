@@ -235,7 +235,7 @@ struct RecordsView: View {
                       value: b)
 
             if excluded > 0 {
-                Text("已排除 \(excluded) 条里程异常记录（多为漏记一次充电）")
+                Text("已排除 \(excluded) 条电耗异常记录（可能是里程/充电量录入有误，或存在漏记）")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
@@ -361,7 +361,7 @@ struct RecordsView: View {
     }
 
     private var footerNote: some View {
-        Text("长按删除 · 点按编辑 · 按住记录约 0.6 秒可删除\n行驶里程 = 本次里程表读数 − 上一笔读数 · 首笔为基准 · 里程回退自动过滤")
+        Text("长按删除 · 点按编辑 · 按住记录约 0.6 秒可删除\n行驶里程 = 本次里程表读数 − 上一笔读数 · 首笔为基准 · 里程回退自动过滤\n刚充电又短距离补电的记录不单独计算，与相邻区间合并")
             .font(.caption2).foregroundStyle(.tertiary)
             .frame(maxWidth: .infinity).padding(14).multilineTextAlignment(.center)
     }
@@ -374,7 +374,7 @@ struct RecordCard: View {
     /// 本笔所在充电周期的达成率（口径 B 逐笔版）；无 SOC 数据时为空，不显示标签
     var rate: Double?
     var isAnomaly: Bool = false
-    /// 区间里程/电耗明显失真（多为漏记一次充电），已排除在统计之外
+    /// 区间里程/电耗明显失真，已排除在电耗统计之外
     var isImplausible: Bool = false
 
     var body: some View {
@@ -399,10 +399,18 @@ struct RecordCard: View {
             if row.valid {
                 HStack(spacing: 16) {
                     dkv("行驶", "\(Fmt.dec(row.distanceKm, 0)) km")
-                    dkv("电耗", "\(Fmt.dec(row.consumption, 1)) kWh/100km")
+                    dkv(row.isAggregated ? "区间电耗" : "电耗",
+                        "\(Fmt.dec(row.consumption, 1)) kWh/100km")
                     dkv("成本", "\(Fmt.dec(row.costPerKm, 2)) 元/km")
                 }
                 .padding(.top, 2)
+                if row.isPending {
+                    Text("短区间不单独计算，与相邻充电区间合并")
+                        .font(.caption2).foregroundStyle(.secondary)
+                } else if row.isAggregated, let distance = row.groupDistanceKm {
+                    Text("合并相邻短区间 · 合计 \(Fmt.dec(distance, 0)) km，充电量与费用按合计计算")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
             }
             if row.record.socBefore != nil || row.record.socAfter != nil {
                 Text("SOC \(row.record.socBefore != nil ? Fmt.int(row.record.socBefore!) + "%" : "—") → \(row.record.socAfter != nil ? Fmt.int(row.record.socAfter!) + "%" : "—")")
@@ -460,6 +468,10 @@ struct RecordCard: View {
             .clipShape(Capsule())
         case .first:
             Text("基准记录").font(.caption2.weight(.semibold))
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(Color(.tertiarySystemFill)).clipShape(Capsule())
+        case .pending:
+            Text("待累计").font(.caption2).fontWeight(.semibold)
                 .padding(.horizontal, 8).padding(.vertical, 3)
                 .background(Color(.tertiarySystemFill)).clipShape(Capsule())
         case .rollback:
