@@ -14,7 +14,11 @@ else
 fi
 
 echo "==> xcodebuild Release (generic/platform=iOS)"
+# 只要 arm64 真机架构：CI runner 上模拟器运行时与 SDK 版本可能对不上，
+# 带上模拟器切片会让资产编译阶段去找不存在的 runtime 而失败。
+mkdir -p build-device
 xcodebuild -project MG4Mate.xcodeproj -scheme MG4Mate \
   -configuration Release -destination 'generic/platform=iOS' \
   -derivedDataPath build-device \
-  CODE_SIGNING_ALLOWED=NO build | tee build-device/xcodebuild.log | grep -E "error:|BUILD|\*\*"
+  ARCHS=arm64 ONLY_ACTIVE_ARCH=NO EXCLUDED_ARCHS=x86_64 \
+  CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build-device/xcodebuild.log | grep -E "error:|BUILD|\*\*"
