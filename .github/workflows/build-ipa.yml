@@ -19,10 +19,10 @@ concurrency:
 jobs:
   build:
     name: Build unsigned IPA for iOS 16+
+    # 用镜像自带的默认 Xcode（runner 会保持与它配套的 iphonesimulator 运行时）。
+    # 资产编译阶段即使只出真机包也会校验 runtime，硬编码旧 Xcode 会版本错配失败。
     runs-on: macos-15
     timeout-minutes: 30
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -31,10 +31,11 @@ jobs:
 
       - name: Select Xcode and verify SDK
         run: |
-          sudo xcode-select -s "$DEVELOPER_DIR"
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
-          test -d /Applications/Xcode_16.2.app
+          xcrun --sdk iphonesimulator --show-sdk-version
+          echo "AVAILABLE_RUNTIMES:"
+          xcrun simctl list runtimes | sed -n '1,20p'
 
       - name: Install XcodeGen
         run: |
