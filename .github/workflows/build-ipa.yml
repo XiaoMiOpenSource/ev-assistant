@@ -48,7 +48,22 @@ jobs:
           grep -q 'IPHONEOS_DEPLOYMENT_TARGET: "16.0"' project.yml
 
       - name: Build device app without a developer certificate
+        env:
+          # 高德「Web 服务」Key：用仓库 Secret（推荐）或 Variable 提供，二者都没有时为空。
+          # 为空时构建照常成功，只是 Info.plist 保留 $(AMAP_KEY) 占位符、App 内可手动填写 Key。
+          # 传进脚本后用临时 xcconfig 注入，绝不会出现在 xcodebuild 命令行与日志里。
+          AMAP_KEY: ${{ secrets.AMAP_KEY || vars.AMAP_KEY }}
         run: bash scripts/build_device.sh
+
+      - name: Verify Amap key injection state
+        run: |
+          APP=build-device/Build/Products/Release-iphoneos/MG4Mate.app
+          AMAP="$(/usr/libexec/PlistBuddy -c 'Print :AmapKey' "$APP/Info.plist" 2>/dev/null || true)"
+          case "$AMAP" in
+            *'$('*) echo "高德 Key：未注入（占位符保留，App 内可手动填写）" ;;
+            "")     echo "高德 Key：未注入（空值）" ;;
+            *)      echo "高德 Key：已注入，长度 ${#AMAP}" ;;
+          esac
 
       - name: Package ad-hoc IPA and TrollStore tipa
         run: bash scripts/package_ipa.sh

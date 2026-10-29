@@ -24,6 +24,10 @@ enum ServiceError: LocalizedError {
 
 struct MG4Service {
     let config: AppConfig
+    /// 是否允许在抓取车况时顺带做高德逆地理编码。
+    /// 小组件（Widget 扩展）传 false：它每 15 分钟跑一次、单次刷新有严格时间预算，
+    /// 不该把坐标发给第三方，也不该多等一个网络来回；地址直接复用 App 写进快照的缓存文本。
+    var geocode: Bool = true
 
     /// 抓取一次车况并（在位置变动等情况下）逆地理编码，随后写入共享存储
     func fetchAndCache() async throws -> VehicleSnapshot {
@@ -116,22 +120,41 @@ struct MG4Service {
         let fallbackAddr = old?.address
         let fallbackValid = fallbackAddr != nil && !isBadAddress(fallbackAddr)
         var address: String
-        // 地址文本对应的坐标：地址复用判定依据（防止“地址粘滞”滞后）
+        // 地址文本对应的坐标：地址复用判定依据（防止“地址粘滞”滞后）。
+        // 统一存地图坐标（GCJ-02 + 手动校准），与显示/导航使用同一个坐标系。
         var addrLat = old?.addrLat
         var addrLng = old?.addrLng
 
+        // 当前坐标在地图坐标系下的取值（逆地理编码必须用这个，不能拿接口原始 WGS-84 去查）
+        var mapCoord: (lat: Double, lng: Double)?
+        if let lat, let lng {
+            mapCoord = mapDisplayCoord(lat: lat, lng: lng, config: config)
+        }
+
         // 仅在“新位置离该地址文本自己的坐标”100m 内时沿用缓存文本；
         // 车挪到邻近街道（旧逻辑阈值 200m 会命中）时将重新逆地理，保证显示跟得上。
-        if let refLat = old?.addrLat, let refLng = old?.addrLng,
-           let lat, let lng, !isBadAddress(fallbackAddr),
-           distanceMeters(lat1: lat, lng1: lng, lat2: refLat, lng2: refLng) < 100 {
+        if let mc = mapCoord,
+           let refLat = old?.addrLat, let refLng = old?.addrLng,
+           !isBadAddress(fallbackAddr),
+           distanceMeters(lat1: mc.lat, lng1: mc.lng, lat2: refLat, lng2: refLng) < 100 {
             address = fallbackAddr ?? "等待位置数据..."
-        } else if let lat, let lng {
-            // 不做任何第三方逆地理：只用本地缓存的地址文本，否则只显示「已定位」，坐标不外发
-            if fallbackValid {
+        } else if let mc = mapCoord {
+            // 位置变了：配了高德 Key 就做一次逆地理编码，把坐标换成中文地址
+            let amapKey = AmapGeocoder.effectiveKey(for: config)
+            var geocoded: String?
+            if geocode, !amapKey.isEmpty, isInChina(lat: mc.lat, lng: mc.lng) {
+                geocoded = await AmapGeocoder.reverseGeocode(lat: mc.lat, lng: mc.lng, key: amapKey)
+            }
+            if let geocoded {
+                address = geocoded
+                addrLat = mc.lat
+                addrLng = mc.lng
+            } else if fallbackValid {
+                // 没配 Key 或逆地理失败：沿用旧文本，别让地址栏突然变空
                 address = fallbackAddr!
             } else {
-                address = "已定位"
+                // 没有可用 Key：提示用户可以在设置里手动填自己的高德 Key
+                address = amapKey.isEmpty ? "已定位 · 设置里填高德 Key 可显示地址" : "已定位"
                 addrLat = nil
                 addrLng = nil
             }
@@ -160,6 +183,90 @@ struct MG4Service {
                                fetchTime: Date())
     }
 
+}
+
+// MARK: - 构建期注入的高德 Key
+
+/// Info.plist 里 `AmapKey` 写的是 `$(AMAP_KEY)`，由构建设置在打包时替换。
+/// 开源仓库和公开构建都没有注入这个构建设置，Xcode 会把占位符原样留下 —— 这里把它判定为
+/// 「没有 Key」，于是默认构建绝不会把坐标发给任何第三方；要显示地址就在设置里手动填 Key。
+let builtinAmapKey: String? = {
+    guard let raw = Bundle.main.object(forInfoDictionaryKey: "AmapKey") as? String else { return nil }
+    let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    if text.isEmpty || text.contains("$(") { return nil }
+    return text
+}()
+
+// MARK: - 高德逆地理编码（坐标 → 中文地址）
+//
+// 只在设置里填了高德 Key 时才会被调用；未配置 Key、坐标在境外、请求失败、返回异常
+// 一律返回 nil，由调用方回落到缓存地址或「已定位」，绝不影响车况抓取本身。
+//
+// 两个容易踩的点：
+//   1. 高德要求 location 是「经度,纬度」（lng,lat），顺序和车辆接口里的「纬度,经度」相反；
+//   2. 高德只接受 GCJ-02 坐标，必须传经过 mapDisplayCoord 换算后的地图坐标。
+
+enum AmapGeocoder {
+
+    /// 本次构建真正可用的高德 Key：设置页手填的优先，其次用构建期注入的。
+    /// 两者都没有就返回空串，调用方据此完全跳过第三方请求。
+    static func effectiveKey(for config: AppConfig) -> String {
+        let typed = config.amapKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !typed.isEmpty { return typed }
+        return builtinAmapKey ?? ""
+    }
+
+    /// 逆地理编码：成功返回格式化地址文本，失败返回 nil（调用方静默回落）
+    /// - Parameters:
+    ///   - lat/lng: 地图坐标（GCJ-02，已含手动校准偏移）
+    ///   - key: 高德「Web 服务」Key
+    ///   - timeout: 单次请求超时（秒），默认 8s，避免拖慢车况刷新
+    static func reverseGeocode(lat: Double,
+                               lng: Double,
+                               key: String,
+                               timeout: TimeInterval = 8) async -> String? {
+        let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedKey.isEmpty,
+              lat.isFinite, lng.isFinite,
+              let escapedKey = trimmedKey.addingPercentEncoding(withAllowedCharacters: .alphanumerics)
+        else { return nil }
+
+        // 高德的 location 参数是「经度,纬度」，保留 6 位小数足够（约 0.1m）
+        let location = String(format: "%.6f", lng) + "," + String(format: "%.6f", lat)
+        let urlString = "https://restapi.amap.com/v3/geocode/regeo"
+            + "?key=" + escapedKey
+            + "&location=" + location
+            + "&extensions=base&radius=1000"
+        guard let url = URL(string: urlString) else { return nil }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = timeout
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                return nil
+            }
+            return parseAddress(from: data)
+        } catch {
+            return nil
+        }
+    }
+
+    /// 解析高德返回：{"status":"1","info":"OK","regeocode":{"formatted_address":"..."}}
+    /// status 为 "0" 表示业务失败（Key 无效 / 额度用尽 / 坐标越界等），同样按失败处理。
+    private static func parseAddress(from data: Data) -> String? {
+        guard let object = try? JSONSerialization.jsonObject(with: data),
+              let root = object as? [String: Any] else { return nil }
+        guard let status = root["status"] as? String, status == "1" else { return nil }
+        guard let regeocode = root["regeocode"] as? [String: Any] else { return nil }
+        // 注意：没有可用地址时高德返回的是空数组 []，不是空字符串，必须判类型
+        guard let formatted = regeocode["formatted_address"] as? String else { return nil }
+        let text = formatted.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
 }
 
 // MARK: - 宽容解析（服务端字段可能是 NSNumber / String / Bool）

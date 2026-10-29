@@ -96,6 +96,11 @@ struct AppConfig: Codable, Equatable {
     /// 手动填写的 CLTC 标称续航（km）：用于车况页“续航达成率”计算；
     /// 留空/0 时自动回退到接口上报的 battery_pack_range
     var cltcNominal: Int? = nil
+    /// 高德「Web 服务」Key：填写后用车况坐标做逆地理编码（坐标 → 中文地址）；
+    /// 留空则完全不请求第三方，位置只显示「已定位」与坐标本身，坐标不外发。
+    /// 必须保持 Optional：老配置 JSON 里没有这个键，非可选属性会让整个 config
+    /// 解码失败、用户已填的接口地址与车辆信息被重置成默认值。
+    var amapKey: String? = nil
 
     /// 可选车辆颜色（存储键 -> 展示名）
     static let colorNames: [String: String] = [
@@ -271,4 +276,23 @@ func isBadAddress(_ text: String?) -> Bool {
     guard let text else { return true }
     let bad = ["等待位置数据...", "等待位置...", "车辆未上报位置", "位置服务异常", ""]
     return bad.contains(text.trimmingCharacters(in: .whitespaces))
+}
+
+// ------------------------------------------------------------
+// 地图坐标：显示 / 导航 / 逆地理编码共用同一套换算
+// （三处若各算各的，地址文本就会和地图上的点、导航终点错开）
+// ------------------------------------------------------------
+
+/// 坐标是否落在中国大陆范围内（高德逆地理只覆盖国内，境外没必要发请求）
+/// 边界与 wgs2gcj 内部的 outOfChina 保持一致。
+func isInChina(lat: Double, lng: Double) -> Bool {
+    72.004 <= lng && lng <= 137.8347 && 0.8293 <= lat && lat <= 55.8271
+}
+
+/// 把接口上报坐标换算成地图坐标：按配置决定是否 WGS-84 → GCJ-02，再叠加手动校准偏移。
+func mapDisplayCoord(lat: Double, lng: Double, config: AppConfig) -> (lat: Double, lng: Double) {
+    let fixed: (lat: Double, lng: Double) = config.mapFix
+        ? wgs2gcj(lat: lat, lng: lng)
+        : (lat: lat, lng: lng)
+    return (lat: fixed.lat + config.latOff, lng: fixed.lng + config.lngOff)
 }

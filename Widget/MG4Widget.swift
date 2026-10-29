@@ -30,7 +30,9 @@ struct Provider: TimelineProvider {
             // 与 Scriptable 版行为一致：配置了 API 且数据缺失/过期时，在刷新时拉一次
             if !config.needsSetup && (content.snapshot == nil || content.snapshot?.isFresh != true) {
                 do {
-                    let fresh = try await MG4Service(config: config).fetchAndCache()
+                    // geocode: false —— 小组件不做逆地理：时间线刷新预算有限，
+                    // 也不该在 App 没打开时把坐标发给第三方；地址直接用 App 写进快照的缓存文本。
+                    let fresh = try await MG4Service(config: config, geocode: false).fetchAndCache()
                     content = WidgetContent(snapshot: fresh, config: SharedStore.loadConfig(),
                                            carImage: CarImageStore.localImage(color: config.carColor))
                 } catch {

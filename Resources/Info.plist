@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- 高德「Web 服务」Key 的构建期注入点。
+	     仓库里只有这个占位符；CI 用 AMAP_KEY 构建设置（或用户在设置里手填）才会真正带上 Key。
+	     未注入时运行时读到的是字面量 $(AMAP_KEY)，代码里会把它当成「没有 Key」处理。 -->
+	<key>AmapKey</key>
+	<string>$(AMAP_KEY)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh_CN</string>
 	<key>CFBundleDisplayName</key>

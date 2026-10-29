@@ -8,6 +8,7 @@ struct CarSettingsView: View {
     @State private var showPreview = false
     @State private var refreshState: String?
     @FocusState private var cltcFocused: Bool
+    @FocusState private var amapFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -29,10 +30,31 @@ struct CarSettingsView: View {
                             .accessibilityLabel("清除 API 地址")
                         }
                     }
+
+                    HStack(spacing: 8) {
+                        TextField("高德 Web 服务 Key（选填，用于显示地址）", text: Binding(
+                            get: { cfg.amapKey ?? "" },
+                            set: { cfg.amapKey = $0.isEmpty ? nil : $0 }
+                        ))
+                        .keyboardType(.asciiCapable)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($amapFocused)
+                        if !(cfg.amapKey ?? "").isEmpty {
+                            Button {
+                                cfg.amapKey = nil
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("清除高德 Key")
+                        }
+                    }
                 } header: {
                     Text("数据源")
                 } footer: {
-                    Text("接口需返回 { \"data\": { \"vehicle_value\": {...}, \"vehicle_state\": {...}, \"vehicle_position\": \"纬度,经度\" } } 结构。App 只与你填写的这个地址通信：不做任何第三方逆地理、不上传坐标，位置仅显示“已定位”与坐标本身。")
+                    Text("接口需返回 { \"data\": { \"vehicle_value\": {...}, \"vehicle_state\": {...}, \"vehicle_position\": \"纬度,经度\" } } 结构。填了「高德 Web 服务 Key」时，App 会额外请求高德逆地理编码（restapi.amap.com），把车辆坐标换成中文地址显示在车况页底部；不填则完全不请求第三方，位置只显示「已定位」与坐标本身，坐标不外发。")
                 }
 
                 Section {
@@ -142,9 +164,12 @@ struct CarSettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
-                    if cltcFocused {
+                    if cltcFocused || amapFocused {
                         Spacer()
-                        Button("完成") { cltcFocused = false }
+                        Button("完成") {
+                            cltcFocused = false
+                            amapFocused = false
+                        }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {

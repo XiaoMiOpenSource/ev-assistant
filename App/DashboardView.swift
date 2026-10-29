@@ -645,8 +645,9 @@ struct DashboardView: View {
 
     /// 依据设置返回用于地图/导航的坐标：mapFix 转换 + 手动校准偏移
     private func displayCoord(lat: Double, lng: Double) -> (lat: Double, lng: Double) {
-        let f = model.config.mapFix ? wgs2gcj(lat: lat, lng: lng) : (lat: lat, lng: lng)
-        return (lat: f.lat + model.config.latOff, lng: f.lng + model.config.lngOff)
+        // 与逆地理编码共用同一套换算（Shared/Car/Model.swift 的 mapDisplayCoord），
+        // 否则地址文本会和地图上的点、导航终点错开
+        mapDisplayCoord(lat: lat, lng: lng, config: model.config)
     }
 
     /// 保存手动校准偏移（点选真实位置后与显示坐标的差值）
