@@ -189,34 +189,37 @@ struct DashboardView: View {
     // MARK: - 有数据时
 
     private func content(for snap: VehicleSnapshot) -> some View {
-        VStack(spacing: 12) {
-            identityCard(snap)
-            energyCard(snap)
+        VStack(spacing: Space.gap) {
+            heroCard(snap)       // 身份 + 电量 / 续航 / 里程：原来两张卡，合并成一张主卡
             if model.config.lowBatteryRemind,
                snap.needsCharge(threshold: model.config.lowBatteryThreshold) {
                 lowBatteryBanner(snap)   // 低电量充电提醒横幅
             }
-            lockModule(snap)     // 独立模块 1：门锁
-            doorModule(snap)     // 独立模块 2：门窗
+            safetyCard(snap)     // 门锁 + 门窗：合成「安全状态」，一眼看完
             statGrid(snap)
             tyreCard(snap)
             locationCard(snap)
         }
     }
 
-    /// 第一模块 —— 电量主卡（v1.0.28 排版统一版）
-    /// 字体规范（全卡一致）：主数值 = SF Rounded Heavy（环内 34 / 续航焦点 26）；
-    /// 标题 = 17 Semibold；次级值 = 13 Semibold；辅助（标签/单位/颜色/VIN）= 12 Regular 次级灰；
-    /// 数字统一 monospacedDigit 防跳动；状态胶囊 11 Semibold 橙。
-    /// 布局：环(104) + 右列左对齐，节奏 = 标题行 → 徽章行 → 焦点续航 → 总里程 → VIN 脚注，
-    /// 标签列定宽 56 使数值列严格对齐，间距节律 6。
-    private func identityCard(_ snap: VehicleSnapshot) -> some View {
+    /// 主卡 —— 车辆身份 + 电量 / 续航 / 里程（原 identityCard + energyCard 合并）
+    ///
+    /// 合并理由：两张卡各自只有 2–3 行信息，占掉整屏 1/4 却要扫两次；
+    /// 合起来后节奏是「车型 → 车牌/状态 → 续航+电量环 → 总里程/VIN」，
+    /// 视线从左上到右下一条线走完，不需要在两张卡之间跳。
+    ///
+    /// 字体规范：主数值 SF Rounded Heavy（续航 36 / 环内 26），标题 18 Semibold，
+    /// 次级 16 Semibold，标签与单位 12 Regular 次级灰；数字一律 monospacedDigit 防跳动。
+    private func heroCard(_ snap: VehicleSnapshot) -> some View {
         let plate = model.config.carPlate
         let colorName = AppConfig.colorNames[model.config.carColor] ?? model.config.carColor
         let charging = snap.charging == true
         let vin = model.config.carVin
+        let battery = min(max(snap.battery ?? 0, 0), 100)
+        let lowBattery = battery <= model.config.lowBatteryThreshold
 
-        return VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 14) {
+            // ① 车型 + 车身色
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(model.config.carModel + (model.config.carName.isEmpty ? "" : " · " + model.config.carName))
                     .font(.system(size: 18, weight: .semibold))
@@ -236,6 +239,7 @@ struct DashboardView: View {
                 }
             }
 
+            // ② 车牌 + 状态胶囊（充电中 / 数据过期）
             HStack(spacing: 8) {
                 Text(plate.isEmpty ? "--" : plate)
                     .font(.system(size: 13, weight: .semibold))
@@ -254,40 +258,27 @@ struct DashboardView: View {
                     .padding(.vertical, 4)
                     .background(Capsule().fill(palette.orange.opacity(0.14)))
                 }
+                if !snap.isFresh {
+                    HStack(spacing: 3) {
+                        Image(systemName: "clock.badge.exclamationmark").font(.system(size: 9, weight: .bold))
+                        Text("数据过期").font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(Color.dsWarn)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.dsWarn.opacity(0.14)))
+                }
                 Spacer(minLength: 0)
             }
 
-            if !vin.isEmpty {
-                HStack(spacing: 6) {
-                    Text("VIN")
-                        .font(.system(size: 10, weight: .semibold))
-                        .tracking(0.6)
-                        .foregroundColor(palette.sub.opacity(0.7))
-                    Text(vin)
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(palette.sub)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
-            }
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-            .fill(Color(.secondarySystemGroupedBackground)))
-    }
-
-    private func energyCard(_ snap: VehicleSnapshot) -> some View {
-        let battery = min(max(snap.battery ?? 0, 0), 100)
-        let rangeText = snap.range.map { $0 == "--" ? "--" : $0 } ?? "--"
-
-        return VStack(alignment: .leading, spacing: 14) {
+            // ③ 续航焦点 + 电量环
             HStack(alignment: .center, spacing: 16) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("剩余续航")
                         .font(.system(size: 12))
                         .foregroundColor(palette.sub)
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text(rangeText)
+                        Text(snap.range ?? "--")
                             .font(.system(size: 36, weight: .heavy, design: .rounded))
                             .foregroundColor(palette.text)
                             .monospacedDigit()
@@ -303,7 +294,7 @@ struct DashboardView: View {
                     Circle().stroke(palette.darkGray, lineWidth: 8)
                     Circle()
                         .trim(from: 0, to: CGFloat(battery) / 100)
-                        .stroke(battery <= model.config.lowBatteryThreshold ? Color.dsDanger : Color.dsOK,
+                        .stroke(lowBattery ? Color.dsDanger : Color.dsOK,
                                 style: StrokeStyle(lineWidth: 8, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 0) {
@@ -321,22 +312,36 @@ struct DashboardView: View {
                 .fill(palette.darkGray)
                 .frame(height: 1)
 
-            HStack(alignment: .firstTextBaseline) {
+            // ④ 总里程 + VIN 脚注
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("总里程")
                     .font(.system(size: 12))
                     .foregroundColor(palette.sub)
-                Spacer(minLength: 8)
                 Text("\(VehicleFormat.odometer(snap.odometer)) km")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(palette.text)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                Spacer(minLength: 8)
+                if !vin.isEmpty {
+                    HStack(spacing: 6) {
+                        Text("VIN")
+                            .font(.system(size: 10, weight: .semibold))
+                            .tracking(0.6)
+                            .foregroundColor(palette.sub.opacity(0.7))
+                        Text(vin)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(palette.sub)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                }
             }
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-            .fill(Color(.secondarySystemGroupedBackground)))
+        .padding(Space.card)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .dsCard()
     }
 
     /// 车身颜色展示色点（与 AppConfig.colorNames 的 key 一一对应；白车靠外层浅描边区分底色）
@@ -397,13 +402,8 @@ struct DashboardView: View {
             guard let d = fullDynamicKM, let n = cltcNominal, n > 0 else { return "--" }
             return String(format: "%.1f%%", d / Double(n) * 100.0)
         }()
+        // 续航里程 / 总里程已经写在主卡里，这里不再重复，只留「主卡放不下」的四个细项
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
-            statCell(icon: "car.fill", iconColor: palette.blue,
-                     value: (snap.range.map { $0 == "--" ? "--" : $0 } ?? "--") + " km",
-                     label: "续航里程")
-            statCell(icon: "speedometer", iconColor: palette.orange,
-                     value: "\(VehicleFormat.odometer(snap.odometer)) km",
-                     label: "总里程")
             statCell(icon: "thermometer.medium", iconColor: Color.dsDanger,
                      value: (snap.interiorTemp.map { $0 == "--" ? "--" : $0 } ?? "--") + " °C",
                      label: "车内温度")
@@ -440,75 +440,63 @@ struct DashboardView: View {
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
-    // MARK: 独立模块 1 —— 门锁
-    private func lockModule(_ snap: VehicleSnapshot) -> some View {
-        let on = snap.locked == true
-        return HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(on ? palette.lockOn : palette.lockOff)
-                Image(systemName: on ? "lock.fill" : "lock.open.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(on ? Color.dsOK : Color.dsDanger)
-            }
-            .frame(width: 44, height: 44)
+    // MARK: 安全状态 —— 门锁 + 门窗（原两个独立模块合并）
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text("门锁")
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(palette.sub)
-                Text(on ? "车辆已锁" : "车辆未锁")
-                    .font(.headline.weight(.semibold))
-                    .foregroundColor(palette.text)
-            }
-            Spacer(minLength: 0)
-            Text(on ? "已锁好" : "未上锁")
-                .font(.caption.weight(.semibold))
-                .foregroundColor(on ? Color.dsOK : Color.dsDanger)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(on ? palette.lockOn : palette.lockOff))
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-            .fill(Color(.secondarySystemGroupedBackground)))
-    }
-
-    // MARK: 独立模块 2 —— 门窗（未关时在卡内展开明细胶囊）
-    @ViewBuilder
-    private func doorModule(_ snap: VehicleSnapshot) -> some View {
-        let on = snap.allClosed == true
+    /// 门锁与门窗原本是两张各占一行的卡，加起来 5 行里 2 行只有一句结论；
+    /// 合成一张后「车锁着、窗也关着」这类最常见状态一屏只占一行多一点。
+    private func safetyCard(_ snap: VehicleSnapshot) -> some View {
+        let locked = snap.locked == true
+        let closed = snap.allClosed == true
         let opens = snap.openParts ?? []
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().fill(on ? palette.doorOn : palette.doorOff)
-                    Image(systemName: on ? "car.side.fill" : "car.side")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(on ? Color.dsOK : palette.orange)
-                }
-                .frame(width: 44, height: 44)
 
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                statusDot(systemName: locked ? "lock.fill" : "lock.open.fill",
+                          tint: locked ? Color.dsOK : Color.dsDanger,
+                          background: locked ? palette.lockOn : palette.lockOff)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("门窗")
+                    Text("门锁")
                         .font(.caption.weight(.medium))
                         .foregroundColor(palette.sub)
-                    Text(on ? "门窗已关" : "门窗未关")
+                    Text(locked ? "车辆已锁" : "车辆未锁")
                         .font(.headline.weight(.semibold))
                         .foregroundColor(palette.text)
                 }
                 Spacer(minLength: 0)
-                Text(on ? "全部关闭" : "\(opens.count) 处未关")
+                Text(locked ? "已锁好" : "未上锁")
                     .font(.caption.weight(.semibold))
-                    .foregroundColor(on ? Color.dsOK : palette.orange)
+                    .foregroundColor(locked ? Color.dsOK : Color.dsDanger)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(on ? palette.doorOn : palette.doorOff))
+                    .background(Capsule().fill(locked ? palette.lockOn : palette.lockOff))
             }
+            .padding(.bottom, 12)
+
+            Divider()
+
+            HStack(spacing: 12) {
+                statusDot(systemName: closed ? "car.side.fill" : "car.side",
+                          tint: closed ? Color.dsOK : Color.dsWarn,
+                          background: closed ? palette.doorOn : palette.doorOff)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("门窗")
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(palette.sub)
+                    Text(closed ? "门窗已关" : "门窗未关")
+                        .font(.headline.weight(.semibold))
+                        .foregroundColor(palette.text)
+                }
+                Spacer(minLength: 0)
+                Text(closed ? "全部关闭" : "\(opens.count) 处未关")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(closed ? Color.dsOK : Color.dsWarn)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(closed ? palette.doorOn : palette.doorOff))
+            }
+            .padding(.top, 12)
 
             if !opens.isEmpty {
-                Divider()
-                    .padding(.top, 12)
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 5) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -516,12 +504,10 @@ struct DashboardView: View {
                         Text("以下部件未关闭")
                             .font(.footnote.weight(.semibold))
                     }
-                    .foregroundColor(palette.orange)
+                    .foregroundColor(Color.dsWarn)
                     .padding(.top, 12)
 
-                    // 以前用 GridItem(.adaptive(minimum: 84))：卡片内宽约 310pt 时正好挤下 3 列，
-                    // 于是「四个门窗全开」被排成 3 + 1，第二行孤零零挂一个。
-                    // 改成按数量定列数，让每一行尽量排满（4 个就是 2×2），并让每个标签等宽铺满格子。
+                    // 按数量定列数：1→1 列，2 或 4→2 列（4 个门窗正好 2×2），其余 3 列。
                     LazyVGrid(columns: closedPartColumns(opens.count),
                               alignment: .leading, spacing: 8) {
                         ForEach(opens, id: \.self) { name in
@@ -533,7 +519,7 @@ struct DashboardView: View {
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.8)
                             }
-                            .foregroundColor(palette.orange)
+                            .foregroundColor(Color.dsWarn)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .frame(maxWidth: .infinity)
@@ -543,10 +529,20 @@ struct DashboardView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(Space.card)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-            .fill(Color(.secondarySystemGroupedBackground)))
+        .dsCard()
+    }
+
+    /// 状态圆底图标（门锁 / 门窗共用，保证两个模块图标视觉重量一致）
+    private func statusDot(systemName: String, tint: Color, background: Color) -> some View {
+        ZStack {
+            Circle().fill(background)
+            Image(systemName: systemName)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(tint)
+        }
+        .frame(width: 44, height: 44)
     }
 
     /// 「以下部件未关闭」的列数：按数量选，行数尽量均衡。
