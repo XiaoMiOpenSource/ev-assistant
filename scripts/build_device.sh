@@ -31,13 +31,12 @@ fi
 # 可选：测试包。TEST_BUILD=1 时包名加 .test 后缀、桌面名加「·测试」，
 # 这样能和正式版并存在同一台手机上：iOS 按 bundle id 分配容器，
 # 测试版的充电记录/凭证都在自己的容器里，不会写坏正式版。
-# App Group 也一并换成 .test 后缀：测试版的车况配置与小组件快照各存一份，
-# 不会覆盖正式版看到的数据；代价是测试版第一次打开要重新填一次接口地址。
+# App Group 默认**不换**（沿用正式版的 group）：非签名 / ad-hoc 安装时，新声明的
+# App Group 容器不一定被系统发放，换过去容易变成「读不到配置、写不进快照」的怪状态。
+# 真要隔离就显式传 MG4_APP_GROUP=… MG4_WIDGET_GROUP=… 。
 if [ "${TEST_BUILD:-0}" = "1" ]; then
   export BUNDLE_ID_SUFFIX=".test"
   export APP_DISPLAY_NAME="电车助手·测试"
-  export MG4_APP_GROUP="${MG4_APP_GROUP:-group.com.evstats.EVLogger.test}"
-  export MG4_WIDGET_GROUP="${MG4_WIDGET_GROUP:-group.mg4widget.test}"
 fi
 BUNDLE_ID_SUFFIX="${BUNDLE_ID_SUFFIX:-}"
 APP_DISPLAY_NAME="${APP_DISPLAY_NAME:-电车助手}"

@@ -53,15 +53,16 @@ jobs:
           # push 到 main 一律出正式包；手动触发按输入选择，默认 test。
           VARIANT="${{ github.event.inputs.variant }}"
           [ -n "$VARIANT" ] || VARIANT=release
-          # App Group 也跟着变体走：测试包用 .test 后缀的独立容器，
-          # 免得测试版把正式版的车况配置与小组件数据覆盖掉。
+          # App Group 两个变体保持一致：测试包沿用正式版的 group。
+          # 非签名 / ad-hoc 安装时，新声明的 App Group 容器不一定被系统发放，
+          # 换过去会出现「读不到配置、写不进小组件快照」的怪状态，排查 Crash 时也是多余变量。
           if [ "$VARIANT" = "test" ]; then
             {
               echo "TEST_BUILD=1"
               echo "BUNDLE_ID_SUFFIX=.test"
               echo "APP_DISPLAY_NAME=电车助手·测试"
-              echo "MG4_APP_GROUP=group.com.evstats.EVLogger.test"
-              echo "MG4_WIDGET_GROUP=group.mg4widget.test"
+              echo "MG4_APP_GROUP=group.com.evstats.EVLogger"
+              echo "MG4_WIDGET_GROUP=group.mg4widget"
               echo "PACKAGE_SUFFIX=_test"
               echo "ARTIFACT_VARIANT=test"
             } >> "$GITHUB_ENV"

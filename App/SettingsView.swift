@@ -82,10 +82,6 @@ struct SettingsView: View {
                 #endif
             }
             .navigationTitle("设置")
-            .sheet(item: $vehicleForm) { target in
-                VehicleFormView(target: target)
-                    .environmentObject(store)
-            }
             .navigationDestination(isPresented: $showBackupCenter) {
                 BackupCenterView()
                     .environmentObject(store)
@@ -158,6 +154,12 @@ struct SettingsView: View {
         Form { vehiclesSection }
             .navigationTitle("车辆与基准")
             .navigationBarTitleDisplayMode(.inline)
+            // 表单挂在「正在显示的这层页面」上：以前挂在根 Form 上，
+            // 点按钮的却是被 push 出来的子页，弹 sheet 的锚点视图被压在栈下面。
+            .sheet(item: $vehicleForm) { target in
+                VehicleFormView(target: target)
+                    .environmentObject(store)
+            }
     }
 
     private var carSourcePage: some View {
@@ -557,11 +559,18 @@ struct VehicleFormView: View {
     private func save() {
         let n = name.trimmingCharacters(in: .whitespaces)
         guard !n.isEmpty else { errorMsg = "请填写车辆昵称"; return }
-        guard let rated = Double(ratedStr), rated > 0 else { errorMsg = "请填写有效的标称续航"; return }
-        guard let batt = Double(batteryStr), batt > 0 else { errorMsg = "请填写有效的电池容量"; return }
+        // isFinite 必查：非有限值一旦落库，所有 Int(Fmt) 转换都会 trap，App 会每次启动都崩
+        guard let rated = Double(ratedStr), rated.isFinite, rated > 0, rated <= 100_000 else {
+            errorMsg = "请填写有效的标称续航（0–100000 km）"; return
+        }
+        guard let batt = Double(batteryStr), batt.isFinite, batt > 0, batt <= 10_000 else {
+            errorMsg = "请填写有效的电池容量（0–10000 kWh）"; return
+        }
         var usable: Double?
         if !usableStr.trimmingCharacters(in: .whitespaces).isEmpty {
-            guard let u = Double(usableStr), u > 0 else { errorMsg = "可用电量需大于 0"; return }
+            guard let u = Double(usableStr), u.isFinite, u > 0, u <= 10_000 else {
+                errorMsg = "可用电量需在 0–10000 kWh 之间"; return
+            }
             usable = u
         }
         let v: Vehicle
@@ -572,7 +581,9 @@ struct VehicleFormView: View {
             v = Vehicle(id: UUID(), name: n, ratedRangeKm: rated, rangeStandard: standard,
                         batteryKWh: batt, usableKWh: usable, createdAt: Date())
         }
+        DiagLog.mark("VehicleFormView 保存 isEdit=\(isEdit) standard=\(standard)")
         store.saveVehicle(v)
+        DiagLog.mark("VehicleFormView 已保存，关闭弹窗")
         dismiss()
     }
 }

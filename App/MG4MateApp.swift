@@ -10,6 +10,11 @@ struct MG4MateApp: App {
     @StateObject private var store = Store.shared
     @StateObject private var carModel = CarModel()
 
+    init() {
+        // 启动自检：上次有没有走到首屏（写进 Documents/diagnostic.log）
+        _ = DiagLog.bootStart()
+    }
+
     /// 外观设置来自车况配置（auto / dark / light），合并后对四个 Tab 一起生效
     private var forcedScheme: ColorScheme? {
         ThemeMode(raw: carModel.config.theme).forcedDark.map { $0 ? .dark : .light }
@@ -63,6 +68,8 @@ struct RootTabView: View {
                 .tag(AppTab.settings)
         }
         .onAppear {
+            DiagLog.mark("首屏出现，启动完成")
+            DiagLog.bootFinished()
             selectInitialTab()
             #if DEBUG
             if DebugSeed.wantsDemoCar { carModel.loadDemoData() }

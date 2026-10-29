@@ -37,10 +37,18 @@ final class Store: ObservableObject {
     private var observerTokens: [NSObjectProtocol] = []
 
     private init() {
+        DiagLog.mark("Store.init 开始")
         load()
         restorePrefs()   // 不自动注入示例数据：库为空则显示空态，由用户自行录入
+        DiagLog.mark("Store.init 读取完成 vehicles=\(vehicles.count) records=\(records.count)")
         SharedData.writeMetric("cost")
-        pushWidgetSnapshot()
+        // 首屏渲染期间不做 App Group 写盘 + WidgetCenter 刷新：挪到下一轮 runloop，
+        // 避免和视图首次布局抢主线程（App Group 容器异常时也更不容易把启动拖死）。
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            DiagLog.mark("Store.init 写小组件快照")
+            self.pushWidgetSnapshot()
+        }
         // 持久层加载完成 / 数据变更 → 刷新内存镜像
         let token = NotificationCenter.default.addObserver(
             forName: .EVDataChanged, object: nil, queue: .main
@@ -125,10 +133,13 @@ final class Store: ObservableObject {
     // MARK: - 写入
     @discardableResult
     func saveVehicle(_ v: Vehicle) -> Bool {
+        DiagLog.mark("saveVehicle 开始 name=\(v.name) rated=\(v.ratedRangeKm) batt=\(v.batteryKWh)")
         let ok = pc.upsertVehicle(v)
+        DiagLog.mark("saveVehicle upsert 完成 ok=\(ok)")
         load()
         if activeVehicle == nil { activeVehicleID = v.id; persistPrefs() }
         pushWidgetSnapshot()
+        DiagLog.mark("saveVehicle 收尾完成 vehicles=\(vehicles.count)")
         objectWillChange.send()
         return ok
     }

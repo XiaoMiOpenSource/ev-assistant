@@ -124,8 +124,16 @@ PACKAGE_SUFFIX=_test ./scripts/package_ipa.sh   # 产物 dist/EVHelper_v1.4_test
 - 包名后缀来自 `project.yml` 的 `BUNDLE_ID_SUFFIX`（正式版留空）：主 App 是 `com.evstats.EVLogger<后缀>`，扩展是 `com.evstats.EVLogger<后缀>.widget`。后缀插在 `.widget` 之前，保证「扩展包名以主包名开头」这条 iOS 硬要求始终成立。
 - 桌面显示名来自 `project.yml` 的 `APP_DISPLAY_NAME`，两个 Info.plist 里写的是 `$(APP_DISPLAY_NAME)`。
 - iOS 按 bundle id 分配沙盒容器，所以测试版的充电记录、数据库、偏好都是独立的：装、删、乱填都不会碰到正式版。
-- App Group 也换了（`group.com.evstats.EVLogger.test` / `group.mg4widget.test`）：测试版的车况配置与小组件快照另存一份，**不会覆盖正式版看到的数据**。代价是测试版第一次打开要重新填一次车辆接口地址。
+- **App Group 不换**：两个变体都写 `group.com.evstats.EVLogger` / `group.mg4widget`。非签名 / ad-hoc 安装时，新声明的 App Group 容器不一定被系统发放，换过去容易出现「读不到车况配置、写不进小组件快照」的怪状态。确实需要隔离时显式传 `MG4_APP_GROUP=… MG4_WIDGET_GROUP=…`（`project.yml` 里已参数化）。副作用：测试版刷新小组件会覆盖正式版的小组件数据（充电记录和数据库仍然是独立的）。
 - 测试通过后出正式包：不设 `TEST_BUILD` 再跑一遍即可（或 GitHub Actions 手动运行，`variant` 选 `release`）。
+
+### 排查闪退（没有 Xcode 也能查）
+
+App 每次启动都会往 `Documents/diagnostic.log` 追加几行阶段标记（`boot 第 N 次尝试` → `Persistence.init` → `Store.init` → `首屏出现`）。手机连电脑也好、不连也好，直接打开系统「文件」App → 我的 iPhone → 电车助手 → `diagnostic.log` 就能看到：
+
+- 最后一行是 `首屏出现，启动完成`：这次启动是好的。
+- 停在某个阶段（比如停在 `Store.init 读取完成` 之后）：说明崩在那一层。
+- 数据库真的打不开时，会把 `EVLogger.sqlite*` 改名成 `.broken-<时间>`（不删，留取证），下次启动自动是空库，App 不会永远打不开。
 
 ## GitHub Actions 构建 IPA
 

@@ -1,6 +1,77 @@
 import SwiftUI
 import CoreData
 
+// MARK: - 启动诊断日志
+/// 极简文件日志：写在 Documents/diagnostic.log，Infoplist 里 UIFileSharingEnabled 已开，
+/// 「文件」App → 我的 iPhone → 电车助手 就能直接看到。
+/// 崩溃不会留下堆栈，但会留下「最后走到哪一步」——没有 Xcode 时这是唯一能拿到的现场证据。
+enum DiagLog {
+    static var url: URL {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return dir.appendingPathComponent("diagnostic.log")
+    }
+
+    static func mark(_ s: String) {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MM-dd HH:mm:ss.SSS"
+        guard let data = "[\(f.string(from: Date()))] \(s)\n".data(using: .utf8) else { return }
+        let u = url
+        if let h = try? FileHandle(forWritingTo: u) {
+            h.seekToEndOfFile()
+            h.write(data)
+            try? h.close()
+        } else {
+            try? data.write(to: u, options: .atomic)
+        }
+        trim()
+    }
+
+    /// 只留最近 400 行，避免日志无限增长
+    private static func trim() {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return }
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+        guard lines.count > 400 else { return }
+        try? lines.suffix(300).joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    // MARK: 启动自检（判断上次是否走完了首屏）
+    private static let bootKey = "diag.boot"
+
+    /// 返回「连续未完成启动」的次数
+    static func bootStart() -> Int {
+        let prev = UserDefaults.standard.dictionary(forKey: bootKey)
+        let streak = (prev?["streak"] as? Int) ?? 0
+        let finished = (prev?["finished"] as? Int) ?? 0
+        let next = finished == 0 ? streak + 1 : 0
+        UserDefaults.standard.set(["streak": next, "finished": 0], forKey: bootKey)
+        mark("boot 第 \(next) 次尝试（上次\(finished == 1 ? "正常结束" : "未走完")）")
+        return next
+    }
+
+    /// 首屏渲染出来了 → 标记本次启动成功
+    static func bootFinished() {
+        UserDefaults.standard.set(["streak": 0, "finished": 1], forKey: bootKey)
+    }
+
+    /// 数据库真的打不开时：把文件挪到 .broken 备份，保留现场，下次启动就是空库
+    static func quarantineStore(reason: String) {
+        let base = PersistenceController.storeURL()
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyyMMdd_HHmmss"
+        let stamp = f.string(from: Date())
+        var moved = 0
+        for suffix in ["", "-wal", "-shm"] {
+            let src = URL(fileURLWithPath: base.path + suffix)
+            guard FileManager.default.fileExists(atPath: src.path) else { continue }
+            let dst = URL(fileURLWithPath: base.path + ".broken-\(stamp)" + suffix)
+            if (try? FileManager.default.moveItem(at: src, to: dst)) != nil { moved += 1 }
+        }
+        mark("store 打不开（\(reason)），已隔离 \(moved) 个文件，下次启动为空库")
+    }
+}
+
 // MARK: - 值类型 DTO（视图层消费，派生值不落库 —— 与蓝图一致）
 struct Vehicle: Identifiable, Hashable, Codable {
     var id: UUID
@@ -58,6 +129,7 @@ final class PersistenceController {
     let container: NSPersistentContainer   // 纯本地容器
 
     init() {
+        DiagLog.mark("Persistence.init 开始")
         let model = PersistenceController.makeModel()
         let container = NSPersistentContainer(name: "EVLogger", managedObjectModel: model)
         let desc = NSPersistentStoreDescription(url: Self.storeURL())
@@ -69,7 +141,14 @@ final class PersistenceController {
         self.container = container
 
         container.loadPersistentStores { _, error in
-            if let error = error as NSError? { NSLog("EVLogger store load error: \(error)"); return }
+            if let error = error as NSError? {
+                NSLog("EVLogger store load error: \(error)")
+                // 库打不开时不要让 App 一直卡在「空库 + 存不进」的状态：
+                // 把文件挪成 .broken-<时间>（不删，留取证），下次启动就是全新空库。
+                DiagLog.quarantineStore(reason: error.localizedDescription)
+                return
+            }
+            DiagLog.mark("store 加载完成")
             // 加载完成后通知 Store 重读镜像（loadPersistentStores 异步，首次 fetch 可能拿空库）
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .EVDataChanged, object: nil)
