@@ -518,7 +518,10 @@ struct DashboardView: View {
                     .foregroundColor(palette.orange)
                     .padding(.top, 12)
 
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 8)],
+                    // 以前用 GridItem(.adaptive(minimum: 84))：卡片内宽约 310pt 时正好挤下 3 列，
+                    // 于是「四个门窗全开」被排成 3 + 1，第二行孤零零挂一个。
+                    // 改成按数量定列数，让每一行尽量排满（4 个就是 2×2），并让每个标签等宽铺满格子。
+                    LazyVGrid(columns: closedPartColumns(opens.count),
                               alignment: .leading, spacing: 8) {
                         ForEach(opens, id: \.self) { name in
                             HStack(spacing: 4) {
@@ -532,6 +535,7 @@ struct DashboardView: View {
                             .foregroundColor(palette.orange)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
+                            .frame(maxWidth: .infinity)
                             .background(Capsule().fill(palette.doorOff))
                         }
                     }
@@ -542,6 +546,13 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
+    }
+
+    /// 「以下部件未关闭」的列数：按数量选，行数尽量均衡。
+    /// 1 → 1 列；2 → 2 列；4 → 2×2（比 3+1 平衡，前/后门窗正好成对）；其余（3、5、6…）→ 3 列。
+    private func closedPartColumns(_ count: Int) -> [GridItem] {
+        let columns = count <= 1 ? 1 : ((count == 2 || count == 4) ? 2 : 3)
+        return Array(repeating: GridItem(.flexible(), spacing: 8), count: columns)
     }
 
     private func tyreCard(_ snap: VehicleSnapshot) -> some View {
