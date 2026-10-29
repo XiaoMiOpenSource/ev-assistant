@@ -133,9 +133,12 @@ jobs:
           [ "$WIDGET_GROUP" = "$MG4_WIDGET_GROUP" ] || { echo "❌ 主程序 MG4WidgetGroup=$WIDGET_GROUP"; exit 1; }
           [ "$APPEX_GROUP" = "$MG4_WIDGET_GROUP" ] || { echo "❌ 扩展 MG4WidgetGroup=$APPEX_GROUP"; exit 1; }
           # 签名里也必须真的带上这两个 group，否则 App Group 会静默失效（配置存不住）。
-          # 注意看的是打包脚本签过的那份（dist/Payload），构建目录里的是未签名产物。
-          codesign -d --entitlements :- "dist/Payload/MG4Mate.app" > dist/main-ent.txt 2>&1 || true
-          codesign -d --entitlements :- "dist/Payload/MG4Mate.app/PlugIns/MG4MateWidget.appex" > dist/appex-ent.txt 2>&1 || true
+          # package_ipa.sh 签名后已自查过一次；这里再从**最终 .ipa** 里解包复核一遍
+          # （打包脚本最后会删掉 dist/Payload，所以不能直接看那个目录）。
+          mkdir -p dist/verify
+          unzip -q dist/*.ipa -d dist/verify
+          codesign -d --entitlements :- "dist/verify/Payload/MG4Mate.app" > dist/main-ent.txt 2>&1 || true
+          codesign -d --entitlements :- "dist/verify/Payload/MG4Mate.app/PlugIns/MG4MateWidget.appex" > dist/appex-ent.txt 2>&1 || true
           echo "主程序签名 entitlements："; cat dist/main-ent.txt
           echo "扩展签名 entitlements："; cat dist/appex-ent.txt
           grep -qF "$MG4_APP_GROUP" dist/main-ent.txt || { echo "❌ 主程序签名里没有 $MG4_APP_GROUP"; exit 1; }
