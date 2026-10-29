@@ -10,6 +10,7 @@ struct RecordsView: View {
     @State private var msgTask: Task<Void, Never>?
     @State private var hideUndoTask: Task<Void, Never>?
     @State private var lastLongPressAt = Date.distantPast
+    @State private var showRateDetail = false
 
     enum FormMode: Identifiable {
         var id: String {
@@ -156,8 +157,8 @@ struct RecordsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .padding(.horizontal, 16).padding(.top, 10)
 
-                // 续航达成率（按设置页所选月份区间统计）
-                rateRangeBar(v: v, rows: rows)
+                // 续航达成率：首屏只给一个结论，两种口径的对照收进详情页
+                rateSummaryCard(v: v, rows: rows)
                     .padding(.horizontal, 16).padding(.top, 8)
 
                 // P1：搜索
@@ -204,62 +205,77 @@ struct RecordsView: View {
             }
         }
         .background(Color(.systemGroupedBackground))
+        .sheet(isPresented: $showRateDetail) {
+            RateDetailView(vehicle: v)
+                .environmentObject(store)
+        }
     }
 
     private var hasFilters: Bool { !searchText.isEmpty || filterMonth != nil }
 
-    /// 续航达成率：A / B 各自成块，两张卡分开摆；口径与「统计」页一致
-    private func rateRangeBar(v: Vehicle, rows: [DerivedRow]) -> some View {
+    /// 续航达成率：首屏只给一个结论（优先口径 B 满充区间实测，没有满充循环回落口径 A），
+    /// 不再把 A / B 两张卡并排放着让用户自己选。两种口径的数值对照、月度历史与算法说明都在 RateDetailView 里。
+    private func rateSummaryCard(v: Vehicle, rows: [DerivedRow]) -> some View {
         let summary = Calculator.bestRate(rows: rows, vehicle: v, window: store.window)
         let excluded = Calculator.excludedCount(rows)
-        let a = summary?.a?.rate
-        let b = summary?.bAvgRate
+        let rate = summary?.rate
 
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Text("续航达成率")
-                    .font(.subheadline.weight(.semibold))
-                Text(store.window.name)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Spacer()
+        return Button { showRateDetail = true } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Text("续航达成率")
+                        .font(.subheadline.weight(.semibold))
+                    Text(store.window.name)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("口径详情")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(rate.map { String(format: "%.0f%%", $0) } ?? "—")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.rateStatusColor(rate))
+                        .monospacedDigit()
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        if let summary {
+                            Text("等效续航 \(Fmt.int(summary.estimatedRangeKm)) km ／ 标称 \(Fmt.int(v.ratedRangeKm)) km")
+                                .font(.footnote)
+                            Text(summary.source == .b
+                                 ? "满充区间实测 · \(summary.cycles) 个循环"
+                                 : "能耗换算 · 未满充的估算")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("样本不足")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            Text("至少需要两次完整充电记录")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                if excluded > 0 {
+                    Text("已排除 \(excluded) 条电耗异常记录（可能是里程/充电量录入有误，或存在漏记）")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(.horizontal, 4)
-
-            rateBlock(title: "口径 A · 能耗换算",
-                      subtitle: "可用电量 ÷ 电耗 × 100",
-                      value: a)
-
-            rateBlock(title: "口径 B · 满充区间",
-                      subtitle: "里程 ÷ SOC 降幅 × 100",
-                      value: b)
-
-            if excluded > 0 {
-                Text("已排除 \(excluded) 条电耗异常记录（可能是里程/充电量录入有误，或存在漏记）")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
-            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-    }
-
-    private func rateBlock(title: String, subtitle: String, value: Double?) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                Text(subtitle)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 8)
-            Text(value.map { String(format: "%.1f%%", $0) } ?? "—")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .monospacedDigit()
-        }
-        .padding(14)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .buttonStyle(.plain)
     }
 
     private func allMonths(for v: Vehicle) -> [String] {

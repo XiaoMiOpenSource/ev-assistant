@@ -5,15 +5,41 @@ import UIKit
 // 数据服务 —— 抓取车辆 API、规整字段、逆地理编码（逻辑对齐 Scriptable 原脚本）
 // ============================================================
 
+// 错误分型：车况抓取失败的原因差别很大（凭证过期 / 地址填错 / 没网 / 超时 / 返回格式变了），
+// 界面上只显示一句话，所以每句话都要直接告诉用户「这是什么问题、下一步做什么」。
 enum ServiceError: LocalizedError {
+    /// 还没填接口地址
     case emptyURL
+    /// 地址不是合法的 http(s) URL
+    case badURL(String)
+    /// 凭证失效：HTTP 401/403，或接口用 200 + 错误文案表示登录态过期
+    case auth(String)
+    /// 其它 HTTP 错误
+    case http(Int)
+    /// 没有网络 / 连接中断
+    case offline
+    /// 超时
+    case timeout
+    /// 返回体不是预期的 JSON 结构
     case badPayload(String)
+    /// 其它网络层错误
     case network(String)
 
     var errorDescription: String? {
         switch self {
         case .emptyURL:
-            return "尚未配置 API 地址，请先在 App 设置中填写"
+            return "还没填车辆接口地址：打开「设置 → 车况数据源」，把抓包得到的接口地址粘贴进去"
+        case .badURL(let raw):
+            return "接口地址格式不对（\(raw.prefix(48))）：需要以 http:// 或 https:// 开头的完整地址"
+        case .auth(let m):
+            let detail = m.isEmpty ? "" : "（接口返回：\(m)）"
+            return "凭证已失效，接口拒绝了这次请求\(detail)：请重新抓包，把新的接口地址粘贴到设置里；历史记录不受影响"
+        case .http(let code):
+            return "车辆接口返回 HTTP \(code)：地址可能填错了，或接口暂时不可用"
+        case .offline:
+            return "当前没有网络，或连不上车辆接口：请检查手机网络后重试"
+        case .timeout:
+            return "请求车辆接口超时（15 秒）：网络太慢，或地址不可达"
         case .badPayload(let m):
             return "数据格式异常：\(m)"
         case .network(let m):
@@ -31,9 +57,13 @@ struct MG4Service {
 
     /// 抓取一次车况并（在位置变动等情况下）逆地理编码，随后写入共享存储
     func fetchAndCache() async throws -> VehicleSnapshot {
-        guard !config.apiURL.trimmingCharacters(in: .whitespaces).isEmpty,
-              let url = URL(string: config.apiURL) else {
-            throw ServiceError.emptyURL
+        let trimmed = config.apiURL.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { throw ServiceError.emptyURL }
+        guard let url = URL(string: trimmed),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              url.host != nil else {
+            throw ServiceError.badURL(trimmed)
         }
         let snapshot = try await fetch(from: url)
         SharedStore.saveSnapshot(snapshot)
@@ -46,18 +76,63 @@ struct MG4Service {
 
         let data: Data
         do {
-            let (d, _) = try await URLSession.shared.data(for: request)
+            let (d, response) = try await URLSession.shared.data(for: request)
+            // 凭证过期时接口常直接回 401/403：先单拎出来，别让用户以为是网络问题
+            if let http = response as? HTTPURLResponse {
+                if http.statusCode == 401 || http.statusCode == 403 {
+                    throw ServiceError.auth("HTTP \(http.statusCode)")
+                }
+                if !(200...299).contains(http.statusCode) {
+                    throw ServiceError.http(http.statusCode)
+                }
+            }
             data = d
+        } catch let e as ServiceError {
+            throw e
+        } catch let e as URLError {
+            switch e.code {
+            case .notConnectedToInternet, .networkConnectionLost:
+                throw ServiceError.offline
+            case .timedOut:
+                throw ServiceError.timeout
+            case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed, .secureConnectionFailed:
+                throw ServiceError.network("连不上 \(url.host ?? "该地址")，请检查接口地址是否填错")
+            default:
+                throw ServiceError.network(e.localizedDescription)
+            }
         } catch {
             throw ServiceError.network(error.localizedDescription)
         }
 
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let body = json["data"] as? [String: Any] else {
-            throw ServiceError.badPayload("缺少 data 字段")
+        return try await decodeSnapshot(from: data)
+    }
+
+    /// 把响应体解析成快照；区分「结构变了」和「登录态过期」两种失败
+    private func decodeSnapshot(from data: Data) async throws -> VehicleSnapshot {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw ServiceError.badPayload("返回内容不是 JSON，可能抓到的是登录页或错误页")
         }
 
-        return try await buildSnapshot(from: body)
+        if let body = json["data"] as? [String: Any] {
+            return try await buildSnapshot(from: body)
+        }
+
+        // 没有 data 字段：把接口自己给的文案透出来（凭证过期时常见 200 + 错误文案）
+        let raw = (json["message"] as? String)
+            ?? (json["msg"] as? String)
+            ?? (json["errorMsg"] as? String)
+            ?? (json["error"] as? String)
+            ?? ""
+        let msg = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lower = msg.lowercased()
+        let authWords = ["token", "过期", "登录", "未授权", "unauthor", "expire", "invalid", "失效"]
+        let code = json["code"]
+        let codeText = (code as? Int).map { String($0) } ?? (code as? String) ?? ""
+
+        if codeText == "401" || codeText == "403" || authWords.contains(where: { lower.contains($0) }) {
+            throw ServiceError.auth(msg)
+        }
+        throw ServiceError.badPayload(msg.isEmpty ? "缺少 data 字段" : "缺少 data 字段（接口返回：\(msg)）")
     }
 
     // MARK: - 数据规整

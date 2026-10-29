@@ -103,6 +103,9 @@ struct RecordFormView: View {
                             field("充电前 %", text: $socBStr, unit: "%")
                             field("充电后 %", text: $socAStr, unit: "%")
                         }
+                        Text("按本次充电的实际情况填：充电前＝插枪时的剩余电量，充电后＝充完拔枪时的电量。"
+                             + "两笔都填了才能算「满充区间」达成率；不填只影响达成率，不影响电耗统计。")
+                            .font(.caption2).foregroundStyle(.secondary)
                     }
 
                     group(label: "温度标签（可选，用于能耗归因）") {
@@ -151,15 +154,16 @@ struct RecordFormView: View {
         }
     }
 
-    // MARK: 从「车况」带入（合并后两套数据同进程，省去手抄里程与电量）
+    // MARK: 从「车况」带入里程（合并后两套数据同进程，省去手抄里程）
+    // 只带里程：车况里的「当前电量」是此刻的剩余电量，不是本次充电结束时的电量。
+    // 拿它当充电后 SOC 会把 SOC 降幅算大、把口径 B 的达成率抬高，所以电量一律由用户按充电实际手填。
     @ViewBuilder private var snapshotFill: some View {
-        if let snap = carModel.snapshot, snap.odometer != nil || snap.battery != nil {
+        if let snap = carModel.snapshot, snap.odometer != nil {
             VStack(alignment: .leading, spacing: 6) {
                 Button {
                     if let odo = snap.odometer { odoStr = String(odo) }
-                    if let b = snap.battery { socAStr = String(b) }
                 } label: {
-                    Label("从车况带入里程与当前电量", systemImage: "arrow.down.circle")
+                    Label("从车况带入当前里程", systemImage: "arrow.down.circle")
                         .font(.footnote)
                         .frame(maxWidth: .infinity)
                 }
@@ -170,6 +174,10 @@ struct RecordFormView: View {
                      + (snap.isFresh ? "，15 分钟内" : "，可能已过期") + "）")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+
+                Text("充电前 / 充电后电量请按本次充电实际情况填写，不自动带入（否则会算错达成率）")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
         }
     }
