@@ -5,8 +5,9 @@ import Foundation
 // ============================================================
 
 enum SharedStore {
-    /// App Group ID（project.yml / 两个 entitlements 中保持一致）
-    static let appGroupID = "group.mg4widget"
+    /// App Group ID：来自 Info.plist 的 MG4WidgetGroup（见 SharedData.swift 的 CarAppGroupID），
+    /// 正式版是 group.mg4widget，测试包是 group.mg4widget.test（两边容器隔离）。
+    static let appGroupID = CarAppGroupID
 
     static let configKey = "mg4.config"
     static let snapshotKey = "mg4.snapshot"

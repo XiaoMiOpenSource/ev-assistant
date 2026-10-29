@@ -340,12 +340,6 @@ struct StatsView: View {
         .background(Capsule().fill(Color.white.opacity(0.16)))
     }
 
-    private func rateTag(_ r: Double) -> String {
-        if r >= 100 { return "🎉 超达成" }
-        if r >= 80 { return "正常" }
-        return "⚠ 低于预期"
-    }
-
     // MARK: 本月
     private func monthCards(_ rows: [DerivedRow]) -> some View {
         let series = Calculator.monthSeries(rows)

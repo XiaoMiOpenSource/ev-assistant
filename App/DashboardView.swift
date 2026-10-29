@@ -650,14 +650,6 @@ struct DashboardView: View {
         mapDisplayCoord(lat: lat, lng: lng, config: model.config)
     }
 
-    /// 保存手动校准偏移（点选真实位置后与显示坐标的差值）
-    private func applyCalibration(dLat: Double, dLng: Double) {
-        var c = model.config
-        c.latOff = dLat
-        c.lngOff = dLng
-        model.saveConfig(c)
-    }
-
     /// 用系统地图（Apple 地图）发起驾车导航到车辆坐标（导航同样应用坐标修正）
     private func openNavigationToCar(lat: Double, lng: Double) {
         let (mlat, mlng) = displayCoord(lat: lat, lng: lng)

@@ -65,23 +65,35 @@ struct MG4WidgetEntryView: View {
                     .foregroundColor(.white.opacity(0.7))
             }
         } else {
-            ZStack {
-                palette.bg.ignoresSafeArea()
-                if let snapshot = content.snapshot {
-                    switch family {
-                    case .systemSmall: SmallLayout(snap: snapshot, palette: palette, carImage: content.carImage, cfg: content.config)
-                    case .systemMedium: MediumLayout(snap: snapshot, palette: palette, carImage: content.carImage, cfg: content.config)
-                    case .systemAccessoryRectangular: LockRectLayout(snap: snapshot, threshold: content.config.lowBatteryThreshold)
-                    default: LargeLayout(snap: snapshot, palette: palette, carImage: content.carImage, cfg: content.config)
-                    }
-                } else {
-                    PlaceholderView(text: content.placeholder ?? "暂无数据", palette: palette)
-                }
+            // iOS 17 起 WidgetKit 要求用 containerBackground 声明小组件背景；
+            // 不声明的话系统会自己铺一层底色（深色模式下观感发灰，和 App 内不一致）。
+            // iOS 16 仍然自己铺，视觉与之前完全相同。
+            if #available(iOS 17.0, *) {
+                regularContent.containerBackground(for: .widget) { palette.bg }
+            } else {
+                regularContent
             }
-            .preferredColorScheme(ThemeMode(raw: content.config.theme).forcedDark == true ? .dark
-                                  : (ThemeMode(raw: content.config.theme).forcedDark == false ? .light : nil))
-            .widgetURL(URL(string: "mg4widget://status"))
         }
+    }
+
+    /// 主屏三档布局（small / medium / large）。锁屏矩形不走这里。
+    private var regularContent: some View {
+        ZStack {
+            palette.bg.ignoresSafeArea()
+            if let snapshot = content.snapshot {
+                switch family {
+                case .systemSmall: SmallLayout(snap: snapshot, palette: palette, carImage: content.carImage, cfg: content.config)
+                case .systemMedium: MediumLayout(snap: snapshot, palette: palette, carImage: content.carImage, cfg: content.config)
+                case .systemAccessoryRectangular: LockRectLayout(snap: snapshot, threshold: content.config.lowBatteryThreshold)
+                default: LargeLayout(snap: snapshot, palette: palette, carImage: content.carImage, cfg: content.config)
+                }
+            } else {
+                PlaceholderView(text: content.placeholder ?? "暂无数据", palette: palette)
+            }
+        }
+        .preferredColorScheme(ThemeMode(raw: content.config.theme).forcedDark == true ? .dark
+                              : (ThemeMode(raw: content.config.theme).forcedDark == false ? .light : nil))
+        .widgetURL(URL(string: "mg4widget://status"))
     }
 }
 

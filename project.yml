@@ -24,6 +24,11 @@ settings:
     #   com.evstats.EVLogger.test / com.evstats.EVLogger.test.widget
     # 后缀插在 .widget 之前，扩展包名才是主包名的子串（iOS 要求）。
     BUNDLE_ID_SUFFIX: ""
+    # App Group（写进 Info.plist，Swift 侧从那里读，package_ipa.sh 用同一份值签 entitlements）。
+    # 测试包给 .test 后缀，这样测试版和正式版各自有独立容器：
+    # 测试版改设置、刷小组件都不会影响正式版；代价是测试版要重新填一次接口地址。
+    MG4_APP_GROUP: "group.com.evstats.EVLogger"
+    MG4_WIDGET_GROUP: "group.mg4widget"
 
 targets:
   MG4Mate:

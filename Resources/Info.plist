@@ -58,6 +58,14 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- App Group 的构建期注入点。Swift 侧（SharedData.swift）从这里读，
+	     打包脚本（package_ipa.sh）也从这里读同一份值去签 entitlements，
+	     保证「代码用的 group」和「签名声明的 group」永远一致。
+	     测试包会换成 .test 后缀，与正式版容器隔离。 -->
+	<key>MG4AppGroup</key>
+	<string>$(MG4_APP_GROUP)</string>
+	<key>MG4WidgetGroup</key>
+	<string>$(MG4_WIDGET_GROUP)</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

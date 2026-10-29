@@ -53,11 +53,15 @@ jobs:
           # push 到 main 一律出正式包；手动触发按输入选择，默认 test。
           VARIANT="${{ github.event.inputs.variant }}"
           [ -n "$VARIANT" ] || VARIANT=release
+          # App Group 也跟着变体走：测试包用 .test 后缀的独立容器，
+          # 免得测试版把正式版的车况配置与小组件数据覆盖掉。
           if [ "$VARIANT" = "test" ]; then
             {
               echo "TEST_BUILD=1"
               echo "BUNDLE_ID_SUFFIX=.test"
               echo "APP_DISPLAY_NAME=电车助手·测试"
+              echo "MG4_APP_GROUP=group.com.evstats.EVLogger.test"
+              echo "MG4_WIDGET_GROUP=group.mg4widget.test"
               echo "PACKAGE_SUFFIX=_test"
               echo "ARTIFACT_VARIANT=test"
             } >> "$GITHUB_ENV"
@@ -66,11 +70,14 @@ jobs:
               echo "TEST_BUILD=0"
               echo "BUNDLE_ID_SUFFIX="
               echo "APP_DISPLAY_NAME=电车助手"
+              echo "MG4_APP_GROUP=group.com.evstats.EVLogger"
+              echo "MG4_WIDGET_GROUP=group.mg4widget"
               echo "PACKAGE_SUFFIX="
               echo "ARTIFACT_VARIANT=release"
             } >> "$GITHUB_ENV"
           fi
           echo "构建变体：$VARIANT（包名 com.evstats.EVLogger${BUNDLE_ID_SUFFIX:-}）"
+          echo "App Group：${MG4_APP_GROUP} / ${MG4_WIDGET_GROUP}"
 
       - name: Verify iOS 16 deployment target
         run: |
@@ -114,6 +121,19 @@ jobs:
           test "$MAIN_ID" = "com.evstats.EVLogger${BUNDLE_ID_SUFFIX}"
           test "$APPEX_ID" = "com.evstats.EVLogger${BUNDLE_ID_SUFFIX}.widget"
           test "$DISPLAY" = "$APP_DISPLAY_NAME"
+
+          # App Group 必须与变体一致（测试包用 .test 独立容器），且不能残留 $(...) 占位符
+          MAIN_GROUP="$(/usr/libexec/PlistBuddy -c 'Print MG4AppGroup' "$APP/Info.plist")"
+          WIDGET_GROUP="$(/usr/libexec/PlistBuddy -c 'Print MG4WidgetGroup' "$APP/Info.plist")"
+          APPEX_GROUP="$(/usr/libexec/PlistBuddy -c 'Print MG4WidgetGroup' "$APP/PlugIns/MG4MateWidget.appex/Info.plist")"
+          echo "App Group  $MAIN_GROUP / $WIDGET_GROUP"
+          test "$MAIN_GROUP" = "$MG4_APP_GROUP"
+          test "$WIDGET_GROUP" = "$MG4_WIDGET_GROUP"
+          test "$APPEX_GROUP" = "$MG4_WIDGET_GROUP"
+          # 签名里也必须真的带上这两个 group，否则 App Group 会静默失效（配置存不住）。
+          # 注意看的是打包脚本签过的那份（dist/Payload），构建目录里的是未签名产物。
+          codesign -d --entitlements :- "dist/Payload/MG4Mate.app" 2>&1 | grep -q "$MG4_APP_GROUP"
+          codesign -d --entitlements :- "dist/Payload/MG4Mate.app/PlugIns/MG4MateWidget.appex" 2>&1 | grep -q "$MG4_WIDGET_GROUP"
           # 扩展包名必须是主包名的前缀延展，否则 iOS 会当成不相干的两样东西
           case "$APPEX_ID" in
             "$MAIN_ID".*) ;;

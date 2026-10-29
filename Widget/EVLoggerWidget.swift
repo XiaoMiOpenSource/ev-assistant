@@ -74,6 +74,36 @@ struct EVRootView: View {
 private func fmtMoney(_ v: Double) -> String { "¥\(Int(v.rounded()))" }
 private func fmtNum(_ v: Double, _ dp: Int = 0) -> String { String(format: "%.\(dp)f", v) }
 
+/// App 设置里可选的小组件主指标（cost / cons / rate）。
+/// systemSmall 一直按它出大数字；medium / large / 锁屏矩形这次也统一按它强调，
+/// 否则用户选了「电耗」，桌面上还是费用当主角，会以为设置没生效。
+private func normalizedMetric(_ m: String) -> String {
+    switch m {
+    case "cons", "rate": return m
+    default: return "cost"
+    }
+}
+
+private func primaryMetric(_ s: WidgetSnapshot, _ metric: String) -> (title: String, value: String) {
+    switch normalizedMetric(metric) {
+    case "rate": return ("达成率", "\(Int(s.rangeRatePercent.rounded()))%")
+    case "cons": return ("平均电耗", "\(fmtNum(s.avgConsumption, 1)) kWh")
+    default:     return ("本月费用", fmtMoney(s.monthCostCNY))
+    }
+}
+
+/// 除主指标之外的其余指标，按固定顺序返回（不含单位混排，便于右侧窄列显示）
+private func otherMetrics(_ s: WidgetSnapshot, _ metric: String) -> [(title: String, value: String)] {
+    let all: [(String, String, String)] = [
+        ("cost", "本月费用", fmtMoney(s.monthCostCNY)),
+        ("rate", "达成率", "\(Int(s.rangeRatePercent.rounded()))%"),
+        ("cons", "平均电耗", "\(fmtNum(s.avgConsumption, 1))"),
+        ("dist", "累计里程", "\(Int(s.totalDistanceKm.rounded())) km"),
+    ]
+    let keep = normalizedMetric(metric)
+    return all.filter { $0.0 != keep }.map { ($0.1, $0.2) }
+}
+
 // MARK: - systemSmall
 private struct SmallView: View {
     let entry: EVEntry
@@ -129,11 +159,26 @@ private struct MediumView: View {
                 Image(systemName: "chevron.right").font(.caption2).opacity(0.7)
             }
             if let s = entry.snap, s.hasData {
-                HStack(spacing: 18) {
-                    metric("本月费用", fmtMoney(s.monthCostCNY))
-                    metric("达成率", "\(Int(s.rangeRatePercent.rounded()))%")
-                    metric("平均电耗", "\(fmtNum(s.avgConsumption, 1)) kWh")
-                    metric("累计里程", "\(Int(s.totalDistanceKm.rounded())) km")
+                let primary = primaryMetric(s, entry.metric)
+                let rest = otherMetrics(s, entry.metric)
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(primary.title).font(.system(size: 9)).opacity(0.8)
+                        Text(primary.value)
+                            .font(.system(size: 21, weight: .bold, design: .rounded))
+                            .lineLimit(1).minimumScaleFactor(0.6)
+                    }
+                    Spacer(minLength: 0)
+                    VStack(alignment: .trailing, spacing: 3) {
+                        ForEach(rest.indices, id: \.self) { i in
+                            HStack(spacing: 4) {
+                                Text(rest[i].title).font(.system(size: 9)).opacity(0.75)
+                                Text(rest[i].value)
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .lineLimit(1).minimumScaleFactor(0.7)
+                            }
+                        }
+                    }
                 }
                 Spacer(minLength: 4)
                 MiniBars(values: s.cost6, color: Color(red: 0.36, green: 0.94, blue: 0.71))
@@ -149,12 +194,6 @@ private struct MediumView: View {
         .foregroundColor(.white)
         .widgetURL(URL(string: "evstats://stats"))
     }
-    @ViewBuilder private func metric(_ name: String, _ v: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(name).font(.system(size: 9)).opacity(0.8)
-            Text(v).font(.system(size: 14, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
-        }
-    }
 }
 
 // MARK: - systemLarge
@@ -169,23 +208,26 @@ private struct LargeView: View {
                 Text(entry.snap?.vehicleName ?? "").font(.caption2).opacity(0.75)
             }
             if let s = entry.snap, s.hasData {
-                HStack(alignment: .firstTextBaseline) {
+                let primary = primaryMetric(s, entry.metric)
+                let rest = otherMetrics(s, entry.metric)
+                HStack(alignment: .firstTextBaseline, spacing: 14) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("本月费用").font(.system(size: 9)).opacity(0.8)
-                        Text(fmtMoney(s.monthCostCNY)).font(.system(size: 22, weight: .bold, design: .rounded))
+                        Text(primary.title).font(.system(size: 9)).opacity(0.8)
+                        Text(primary.value)
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .lineLimit(1).minimumScaleFactor(0.55)
                     }
-                    Spacer()
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("达成率").font(.system(size: 9)).opacity(0.8)
-                        Text("\(Int(s.rangeRatePercent.rounded()))%").font(.system(size: 22, weight: .bold, design: .rounded))
-                    }
-                    Spacer()
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("平均电耗").font(.system(size: 9)).opacity(0.8)
-                        Text("\(fmtNum(s.avgConsumption, 1)) kWh").font(.system(size: 14, weight: .bold, design: .rounded))
+                    Spacer(minLength: 0)
+                    ForEach(rest.indices, id: \.self) { i in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(rest[i].title).font(.system(size: 9)).opacity(0.8)
+                            Text(rest[i].value)
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .lineLimit(1).minimumScaleFactor(0.7)
+                        }
                     }
                 }
-                Divider().background(Color.white.opacity(0.2))
+                Rectangle().fill(Color.white.opacity(0.2)).frame(height: 1)
                 Text("近 6 月达成率").font(.caption2).opacity(0.85)
                 MiniLine(values: s.rate6, color: Color(red: 0.85, green: 0.85, blue: 1.0))
                     .frame(height: 70)
@@ -214,10 +256,13 @@ private struct AccRect: View {
                     Text("电耗助手").font(.caption2.weight(.bold))
                     Spacer()
                 }
-                Text("本月 \(fmtMoney(s.monthCostCNY))  ·  \(Int(s.rangeRatePercent.rounded()))% 达成率")
-                    .font(.caption2)
-                Text("累计 \(Int(s.totalDistanceKm.rounded())) km  ·  \(fmtNum(s.avgConsumption,1)) kWh/100km")
-                    .font(.caption2)
+                let primary = primaryMetric(s, entry.metric)
+                Text(normalizedMetric(entry.metric) == "rate"
+                     ? "达成率 \(primary.value)"
+                     : "\(primary.title) \(primary.value) · \(Int(s.rangeRatePercent.rounded()))% 达成率")
+                    .font(.caption2).lineLimit(1).minimumScaleFactor(0.8)
+                Text("\(fmtNum(s.avgConsumption, 1)) kWh/100km · 累计 \(Int(s.totalDistanceKm.rounded())) km")
+                    .font(.caption2).lineLimit(1).minimumScaleFactor(0.8)
             }
         } else {
             Text("⚡ 电耗助手 · 去记一笔").font(.caption2)

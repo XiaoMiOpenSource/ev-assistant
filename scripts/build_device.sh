@@ -31,15 +31,20 @@ fi
 # 可选：测试包。TEST_BUILD=1 时包名加 .test 后缀、桌面名加「·测试」，
 # 这样能和正式版并存在同一台手机上：iOS 按 bundle id 分配容器，
 # 测试版的充电记录/凭证都在自己的容器里，不会写坏正式版。
-# App Group（group.com.evstats.EVLogger / group.mg4widget）两边相同，
-# 所以车辆接口地址与小组件数据是共用的 —— 测试版不用重新填地址。
+# App Group 也一并换成 .test 后缀：测试版的车况配置与小组件快照各存一份，
+# 不会覆盖正式版看到的数据；代价是测试版第一次打开要重新填一次接口地址。
 if [ "${TEST_BUILD:-0}" = "1" ]; then
   export BUNDLE_ID_SUFFIX=".test"
   export APP_DISPLAY_NAME="电车助手·测试"
+  export MG4_APP_GROUP="${MG4_APP_GROUP:-group.com.evstats.EVLogger.test}"
+  export MG4_WIDGET_GROUP="${MG4_WIDGET_GROUP:-group.mg4widget.test}"
 fi
 BUNDLE_ID_SUFFIX="${BUNDLE_ID_SUFFIX:-}"
 APP_DISPLAY_NAME="${APP_DISPLAY_NAME:-电车助手}"
+MG4_APP_GROUP="${MG4_APP_GROUP:-group.com.evstats.EVLogger}"
+MG4_WIDGET_GROUP="${MG4_WIDGET_GROUP:-group.mg4widget}"
 echo "==> 包名后缀「${BUNDLE_ID_SUFFIX}」，显示名「${APP_DISPLAY_NAME}」"
+echo "==> App Group「${MG4_APP_GROUP}」/「${MG4_WIDGET_GROUP}」"
 
 echo "==> xcodebuild Release (generic/platform=iOS)"
 # 只要 arm64 真机架构：CI runner 上模拟器运行时与 SDK 版本可能对不上，
@@ -49,4 +54,5 @@ xcodebuild -project MG4Mate.xcodeproj -scheme MG4Mate \
   -derivedDataPath build-device \
   ARCHS=arm64 ONLY_ACTIVE_ARCH=NO EXCLUDED_ARCHS=x86_64 \
   BUNDLE_ID_SUFFIX="$BUNDLE_ID_SUFFIX" APP_DISPLAY_NAME="$APP_DISPLAY_NAME" \
+  MG4_APP_GROUP="$MG4_APP_GROUP" MG4_WIDGET_GROUP="$MG4_WIDGET_GROUP" \
   CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build-device/xcodebuild.log | grep -E "error:|BUILD|\*\*"

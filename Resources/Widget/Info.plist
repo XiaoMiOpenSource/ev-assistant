@@ -20,6 +20,11 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- 与主 App 用同一套 App Group 值（见 Resources/Info.plist 的说明） -->
+	<key>MG4AppGroup</key>
+	<string>$(MG4_APP_GROUP)</string>
+	<key>MG4WidgetGroup</key>
+	<string>$(MG4_WIDGET_GROUP)</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

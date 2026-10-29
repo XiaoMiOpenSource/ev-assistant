@@ -5,7 +5,21 @@ import Foundation
 // 写入端：主 App 在每次数据变更后序列化写入 App Group UserDefaults；
 // 读取端：Widget 通过 TimelineProvider 读取并渲染。
 
-let AppGroupID = "group.com.evstats.EVLogger"
+/// App Group 从 Info.plist 读（值来自 project.yml 的 MG4_APP_GROUP / MG4_WIDGET_GROUP）。
+/// 读不到、为空、或构建设置没展开（还留着 "$(" 字面量）时回落到仓库默认值 ——
+/// 这样无论是 Xcode 直接编、脚本编，还是别的打包方式，都不会突然读不到容器。
+private func appGroupFromPlist(_ key: String, fallback: String) -> String {
+    if let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String {
+        let v = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !v.isEmpty, !v.contains("$(") { return v }
+    }
+    return fallback
+}
+
+/// 电耗数据（小组件快照 / 主指标）所在的 group
+let AppGroupID = appGroupFromPlist("MG4AppGroup", fallback: "group.com.evstats.EVLogger")
+/// 车况数据（接口地址、车辆快照、历史曲线）所在的 group
+let CarAppGroupID = appGroupFromPlist("MG4WidgetGroup", fallback: "group.mg4widget")
 let WidgetSnapshotKey = "evstats.snapshot.v1"
 let WidgetMetricKey = "evstats.widgetMetric.v1"   // "cost" | "rate" | "cons"
 

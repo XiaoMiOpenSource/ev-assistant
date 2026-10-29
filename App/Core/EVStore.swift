@@ -31,7 +31,6 @@ final class Store: ObservableObject {
     @Published var selectedTab: AppTab = .records
     @Published var newRecordTick: Int = 0
     @Published var undoOffer: UndoOffer?
-    @Published var cloudMessage: String?
 
     let pc = PersistenceController.shared
     private let ud = UserDefaults.standard
@@ -195,23 +194,8 @@ final class Store: ObservableObject {
     }
     func undoLast() {
         guard let offer = undoOffer else { return }
-        let ok = saveRecordQuiet(offer.record)   // 编辑→还原旧版；删除→upsert 恢复
+        _ = saveRecordQuiet(offer.record)   // 编辑→还原旧版；删除→upsert 恢复
         undoOffer = nil
-        if ok {
-            cloudMessage = offer.kind == .delete ? "已撤销删除" : "已撤销本次修改"
-            scheduleMessageClear()
-        } else {
-            cloudMessage = "撤销失败：存储写入出错"
-            scheduleMessageClear()
-        }
-    }
-    private var clearTask: Task<Void, Never>?
-    func scheduleMessageClear() {
-        clearTask?.cancel()
-        clearTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_200_000_000)
-            if !Task.isCancelled { cloudMessage = nil }
-        }
     }
 
     // MARK: - 预算 / 本地通知（失败静默；权限被拒→忽略）

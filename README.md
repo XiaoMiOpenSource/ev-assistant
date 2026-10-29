@@ -110,6 +110,8 @@ xcodegen generate                           # 生成 MG4Mate.xcodeproj（brew in
 com.apple.security.application-groups = [group.com.evstats.EVLogger, group.mg4widget]
 ```
 
+这两个 group 名是参数化的：`project.yml` 的 `MG4_APP_GROUP` / `MG4_WIDGET_GROUP` → 两个 `Info.plist` 的 `MG4AppGroup` / `MG4WidgetGroup` → Swift 侧（`SharedData.swift`）从 `Info.plist` 读，`package_ipa.sh` 也从同一份 `Info.plist` 读出来 `sed` 生成临时 entitlements 再签名。**一个真值源**，保证代码用的 group 与签名声明的 group 永远一致；签完脚本会 `codesign -d --entitlements :-` 回读校验，对不上直接 `exit 1`。
+
 ### 出「测试包」而不是正式包
 
 想让改动和手机上已装好的正式版**并存**（不覆盖正式版的数据），用 `.test` 后缀出包：
@@ -122,7 +124,7 @@ PACKAGE_SUFFIX=_test ./scripts/package_ipa.sh   # 产物 dist/EVHelper_v1.4_test
 - 包名后缀来自 `project.yml` 的 `BUNDLE_ID_SUFFIX`（正式版留空）：主 App 是 `com.evstats.EVLogger<后缀>`，扩展是 `com.evstats.EVLogger<后缀>.widget`。后缀插在 `.widget` 之前，保证「扩展包名以主包名开头」这条 iOS 硬要求始终成立。
 - 桌面显示名来自 `project.yml` 的 `APP_DISPLAY_NAME`，两个 Info.plist 里写的是 `$(APP_DISPLAY_NAME)`。
 - iOS 按 bundle id 分配沙盒容器，所以测试版的充电记录、数据库、偏好都是独立的：装、删、乱填都不会碰到正式版。
-- 唯一共用的是 App Group（`group.com.evstats.EVLogger` / `group.mg4widget`）：车辆接口地址与小组件快照两边共享，测试版**不用重新填接口地址**；测试版改了设置会同步到正式版，介意的话测完在正式版里重新保存一次即可。
+- App Group 也换了（`group.com.evstats.EVLogger.test` / `group.mg4widget.test`）：测试版的车况配置与小组件快照另存一份，**不会覆盖正式版看到的数据**。代价是测试版第一次打开要重新填一次车辆接口地址。
 - 测试通过后出正式包：不设 `TEST_BUILD` 再跑一遍即可（或 GitHub Actions 手动运行，`variant` 选 `release`）。
 
 ## GitHub Actions 构建 IPA

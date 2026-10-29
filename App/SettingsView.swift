@@ -26,13 +26,48 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
+            // 首层只放「目录」：六段配置各进自己的二级页面。
+            // 以前所有 Section 挤在一个 Form 里，要滚很久才能找到预算或备份入口。
             Form {
-                vehiclesSection
-                carSourceSection
-                budgetSection
-                rateSection
-                dataSection
-                infoSection
+                Section {
+                    NavigationLink { carsPage } label: {
+                        settingRow("车辆与基准", subtitle: vehiclesSubtitle, icon: "car.fill", tint: .blue)
+                    }
+                    NavigationLink { carSourcePage } label: {
+                        settingRow("车况数据源",
+                                   subtitle: carModel.config.needsSetup ? "未配置车辆接口" : "已配置",
+                                   icon: "car.side.fill", tint: .teal,
+                                   warn: carModel.config.needsSetup)
+                    }
+                } header: {
+                    Text("车况")
+                }
+
+                Section {
+                    NavigationLink { budgetPage } label: {
+                        settingRow("月度预算", subtitle: budgetSubtitle, icon: "yensign.circle.fill", tint: .orange)
+                    }
+                    NavigationLink { ratePage } label: {
+                        settingRow("达成率口径", subtitle: "统计窗口 · \(store.window.name)",
+                                   icon: "gauge", tint: .purple)
+                    }
+                } header: {
+                    Text("统计与提醒")
+                }
+
+                Section {
+                    NavigationLink { dataPage } label: {
+                        settingRow("数据与备份",
+                                   subtitle: "\(store.records.count) 笔记录 · \(store.autoBackupFiles().count) 份自动备份",
+                                   icon: "externaldrive.fill", tint: .green)
+                    }
+                    NavigationLink { aboutPage } label: {
+                        settingRow("关于", subtitle: "电车助手 v\(Store.appVersionString)",
+                                   icon: "info.circle.fill", tint: .gray)
+                    }
+                } header: {
+                    Text("数据")
+                }
             }
             .onAppear {
                 #if DEBUG
@@ -68,22 +103,91 @@ struct SettingsView: View {
             } message: {
                 Text("将删除本机全部车辆与充电记录，且无法恢复。")
             }
-            .overlay(alignment: .bottom) {
-                if let toastMsg {
-                    Text(toastMsg).font(.footnote)
-                        .padding(.horizontal, 16).padding(.vertical, 9)
-                        .background(Color(.label).opacity(0.85))
-                        .foregroundColor(Color(.systemBackground))
-                        .clipShape(Capsule())
-                        .padding(.bottom, 24)
-                        .transition(.opacity)
-                        .task(id: toastMsg) {
-                            try? await Task.sleep(nanoseconds: 1_800_000_000)
-                            withAnimation { self.toastMsg = nil }
-                        }
-                }
+        }
+        // 提示条挂在导航栈外层：进了二级页面（比如删车辆被拒）也能看到
+        .overlay(alignment: .bottom) {
+            if let toastMsg {
+                Text(toastMsg).font(.footnote)
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                    .background(Color(.label).opacity(0.85))
+                    .foregroundColor(Color(.systemBackground))
+                    .clipShape(Capsule())
+                    .padding(.bottom, 24)
+                    .transition(.opacity)
+                    .task(id: toastMsg) {
+                        try? await Task.sleep(nanoseconds: 1_800_000_000)
+                        withAnimation { self.toastMsg = nil }
+                    }
             }
         }
+    }
+
+    // MARK: - 目录行
+    /// 首层的目录行：彩色小图标 + 标题 + 一行摘要。chevron 由 List 自己加，这里不画。
+    private func settingRow(_ title: String, subtitle: String, icon: String,
+                            tint: Color, warn: Bool = false) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 26, height: 26)
+                .background(tint.opacity(0.88))
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(warn ? .orange : .secondary)
+            }
+        }
+    }
+
+    private var vehiclesSubtitle: String {
+        guard !store.vehicles.isEmpty else { return "还没有车辆" }
+        let current = store.vehicles.first { $0.id == store.activeVehicleID }?.name
+        return "\(store.vehicles.count) 辆" + (current.map { " · 当前 \($0)" } ?? "")
+    }
+
+    private var budgetSubtitle: String {
+        guard store.hasBudget else { return "未设置" }
+        return "¥\(Int(store.monthlyBudget.rounded()))/月 · 本月已用 ¥\(Int(store.currentMonthCostCNY().rounded()))"
+    }
+
+    // MARK: - 二级页面（内容仍是原来的六段，只是各占一页）
+    private var carsPage: some View {
+        Form { vehiclesSection }
+            .navigationTitle("车辆与基准")
+            .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var carSourcePage: some View {
+        Form { carSourceSection }
+            .navigationTitle("车况数据源")
+            .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var budgetPage: some View {
+        Form { budgetSection }
+            .navigationTitle("月度预算")
+            .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var ratePage: some View {
+        Form { rateSection }
+            .navigationTitle("达成率口径")
+            .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var dataPage: some View {
+        Form { dataSection }
+            .navigationTitle("数据与备份")
+            .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var aboutPage: some View {
+        Form { infoSection }
+            .navigationTitle("关于")
+            .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - P2 月预算
@@ -370,8 +474,6 @@ struct SettingsView: View {
 
 }
 
-// MARK: - Share sheet（iOS16 兼容）
-struct ShareItem: Identifiable { let id = UUID(); let url: URL }
 // MARK: - 车辆编辑表单
 struct VehicleFormView: View {
     @EnvironmentObject private var store: Store
