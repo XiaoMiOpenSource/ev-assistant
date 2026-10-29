@@ -61,7 +61,9 @@ struct DashboardView: View {
                 }
             }
             .sheet(isPresented: $showSettings) {
-                CarSettingsView()
+                // 与「设置 → 车况数据源」是同一份表单（CarSettingsView）；
+                // 这里只是车况页的快捷入口，不再单独维护一套配置界面。
+                CarSettingsView(title: "车况数据源")
                     .environmentObject(model)
             }
             .sheet(isPresented: $showPreview) {

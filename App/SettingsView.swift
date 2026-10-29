@@ -88,7 +88,7 @@ struct SettingsView: View {
                     .environmentObject(store)
             }
             .sheet(isPresented: $showCarSettings) {
-                CarSettingsView()
+                CarSettingsView(title: "车况数据源")
                     .environmentObject(carModel)
             }
             .alert("清空全部数据", isPresented: $confirmReset) {
@@ -164,9 +164,12 @@ struct SettingsView: View {
     }
 
     private var carSourcePage: some View {
-        Form { carSourceSection }
-            .navigationTitle("车况数据源")
-            .navigationBarTitleDisplayMode(.inline)
+        // 以前这一页只有一个「车况数据源与提醒」按钮，点了再弹 CarSettingsView 浮层——
+        // 同一份配置既是「车况页齿轮」又是「设置里的二级页」，还要多点一层才看到表单。
+        // 现在直接把同一个 CarSettingsView 当二级页面渲染（embedded：不自带导航栈、不显示「取消」），
+        // 车况页右上角齿轮打开的也还是这同一个表单，UI 只有一份。
+        CarSettingsView(embedded: true, title: "车况数据源")
+            .environmentObject(carModel)
     }
 
     private var budgetPage: some View {
@@ -439,31 +442,6 @@ struct SettingsView: View {
             Text("数据")
         } footer: {
             Text("纯本地方案：数据仅存本机，不上传任何云端。完整备份（JSON）、本机自动备份与 CSV 导出都收在「备份与恢复」里。当前共 \(store.records.count) 笔记录 / \(store.vehicles.count) 辆车")
-        }
-    }
-
-    // MARK: 车况数据源（合并自原「车况」App，入口收敛到设置页）
-    private var carSourceSection: some View {
-        Section {
-            Button {
-                showCarSettings = true
-            } label: {
-                HStack {
-                    Label("车况数据源与提醒", systemImage: "car.side")
-                    Spacer()
-                    Text(carModel.config.needsSetup ? "未配置" : "已配置")
-                        .font(.caption)
-                        .foregroundStyle(carModel.config.needsSetup ? .orange : .secondary)
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .buttonStyle(.plain)
-        } header: {
-            Text("车况")
-        } footer: {
-            Text("配置车辆数据接口、车辆信息、低电量与未锁提醒；「车况」页右上角齿轮进入同一页面。")
         }
     }
 
