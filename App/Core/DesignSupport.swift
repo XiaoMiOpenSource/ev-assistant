@@ -136,6 +136,9 @@ extension Color {
 struct WrapLayout: Layout {
     var spacing: CGFloat = 8
     var lineSpacing: CGFloat = 8
+    /// 每一行是否在可用宽度内居中（默认左对齐）。
+    /// 主卡底部的「总里程 + VIN」需要居中，才和上方的对称两栏对齐。
+    var centered: Bool = false
 
     private struct Line {
         var indices: [Int] = []
@@ -156,7 +159,8 @@ struct WrapLayout: Layout {
         let lines = arrange(subviews: subviews, maxWidth: bounds.width)
         var y = bounds.minY
         for line in lines {
-            var x = bounds.minX
+            let offset = centered ? max((bounds.width - line.width) / 2, 0) : 0
+            var x = bounds.minX + offset
             for index in line.indices {
                 let size = subviews[index].sizeThatFits(.unspecified)
                 subviews[index].place(

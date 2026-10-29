@@ -246,12 +246,27 @@ struct DashboardView: View {
                 }
             }
 
-            // ② 车牌 + 状态胶囊（充电中 / 数据过期）
+            // ② 新能源号牌 + 状态胶囊（充电中 / 数据过期），右端是数据更新时间
             HStack(spacing: 8) {
+                // 小型新能源车牌的标准样子：渐变绿底、黑字、白细边
                 Text(plate.isEmpty ? "--" : plate)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(palette.sub)
+                    .font(.system(size: 13, weight: .semibold))
+                    .tracking(0.6)
+                    .monospacedDigit()
+                    .foregroundColor(Color(hex: 0x111111))
                     .lineLimit(1)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(LinearGradient(colors: [Color(hex: 0x9BE884), Color(hex: 0x00A651)],
+                                                 startPoint: .topLeading,
+                                                 endPoint: .bottomTrailing))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
+                    )
                 if charging {
                     HStack(spacing: 3) {
                         Image(systemName: "bolt.fill").font(.system(size: 9, weight: .bold))
@@ -272,7 +287,17 @@ struct DashboardView: View {
                     .padding(.vertical, 3)
                     .background(Capsule().fill(Color.dsWarn.opacity(0.14)))
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: 8)
+                // 数据新鲜度：跟着车牌这一行走，不再混在底部胶囊流里
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 9))
+                    Text(freshnessText(snap))
+                        .font(.system(size: 11))
+                }
+                .foregroundColor(palette.sub.opacity(0.9))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             }
 
             // ③ 左右对称：环占左半边、续航占右半边，两块各自在本半区居中。
@@ -329,12 +354,12 @@ struct DashboardView: View {
             }
 
             // ④ 胶囊流：宽度不够自动折行，不做列对齐
-            WrapLayout(spacing: 8, lineSpacing: 6) {
+            // 只留两枚「身份」胶囊，并整行居中，与上方对称两栏共用同一条中轴
+            WrapLayout(spacing: 8, lineSpacing: 6, centered: true) {
                 chip(icon: "road.lanes", text: "\(VehicleFormat.odometer(snap.odometer)) km")
                 if !vin.isEmpty {
                     chip(icon: "number", text: "VIN \(vin)")
                 }
-                chip(icon: "clock", text: freshnessText(snap))
             }
         }
         .padding(Space.card)
