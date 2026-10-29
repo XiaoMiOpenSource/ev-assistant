@@ -175,7 +175,7 @@ struct RecordsView: View {
                 }
                 .padding(10)
                 .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.inner, style: .continuous))
                 .padding(.horizontal, 16).padding(.top, 10)
 
                 // P1：年月筛选
@@ -445,11 +445,15 @@ struct RecordCard: View {
     }
 
     private func tempTag(_ t: Int) -> some View {
-        Text("🌡 \(t)°")
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 7).padding(.vertical, 2)
-            .background(Color.cyan.opacity(0.14)).foregroundColor(.cyan)
-            .clipShape(Capsule())
+        // 用 SF Symbol 代替 emoji：字形随系统字体缩放、粗细一致，暗色下也不会发灰
+        HStack(spacing: 3) {
+            Image(systemName: "thermometer.medium").font(.system(size: 9, weight: .semibold))
+            Text("\(t)°").monospacedDigit()
+        }
+        .font(.caption2.weight(.semibold))
+        .padding(.horizontal, 7).padding(.vertical, 2)
+        .background(Color.cyan.opacity(0.14)).foregroundColor(.cyan)
+        .clipShape(Capsule())
     }
     /// 本笔周期达成率（口径 B：区间里程 ÷ SOC 降幅 ÷ 标称）；无 SOC 数据时不显示
     @ViewBuilder private var rateTag: some View {
@@ -462,18 +466,24 @@ struct RecordCard: View {
         }
     }
     private var implausibleTag: some View {
-        Text("⚠ 数据异常")
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 7).padding(.vertical, 2)
-            .background(Color.red.opacity(0.12)).foregroundColor(.red)
-            .clipShape(Capsule())
+        HStack(spacing: 3) {
+            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 9))
+            Text("数据异常")
+        }
+        .font(.caption2.weight(.semibold))
+        .padding(.horizontal, 7).padding(.vertical, 2)
+        .background(Color.dsDanger.opacity(0.12)).foregroundColor(Color.dsDanger)
+        .clipShape(Capsule())
     }
     private var anomalyTag: some View {
-        Text("⚠ 异常")
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 7).padding(.vertical, 2)
-            .background(Color.orange.opacity(0.16)).foregroundColor(.orange)
-            .clipShape(Capsule())
+        HStack(spacing: 3) {
+            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 9))
+            Text("异常")
+        }
+        .font(.caption2.weight(.semibold))
+        .padding(.horizontal, 7).padding(.vertical, 2)
+        .background(Color.dsWarn.opacity(0.16)).foregroundColor(Color.dsWarn)
+        .clipShape(Capsule())
     }
 
     @ViewBuilder private var tag: some View {

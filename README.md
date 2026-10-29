@@ -65,6 +65,18 @@
 | 统计 | 原 EVLogger | 本月小结、续航达成率（口径 A/B）、累计概览、近 6 月费用/电耗/达成率图表、月报 PDF |
 | 设置 | 原 EVLogger + 车况入口 | 车辆与基准、车况数据源、预算、统计口径、导出/备份/恢复、清除数据；「车况数据源」一页即接口地址、高德逆地理 Key、车辆信息、主题、地图修正、未锁/低电提醒 |
 
+## 设计系统
+
+界面只认一套令牌，定义都在 `App/Core/DesignSupport.swift`，避免「同一个蓝有两个蓝」这一类问题。
+
+- **语义色**：`Color.dsOK` / `Color.dsWarn` / `Color.dsDanger`（正常 / 提醒 / 危险）、`Color.brand`（品牌蓝 `#0A4DE0`，与 `Assets.xcassets/AccentColor` 一致）、`Color.dsStroke`（描边与分隔线）。每个都带浅色与暗色两套值，由系统外观自动切换，不再到处硬编码颜色。
+- **达成率配色**：`Color.rateStatusColor(_:)` —— ≥100% 绿、80–100% 橙、<80% 红；记录页和统计页共用同一套判断。
+- **圆角**：`Radius.card = 20`（卡片）、`Radius.inner = 12`（卡内小容器）；以前 12/16/18 混用已统一。
+- **间距**：`Space.page = 16`（页面左右边距）、`Space.card = 16`（卡内边距）、`Space.gap = 12`（卡片之间）。
+- **卡片容器**：`.dsCard()` 一个修饰符 = 圆角 + 分组底色 +（可选）1px 描边；暗色下靠描边分隔，不靠阴影。
+- **数字**：所有会随刷新变化的数值都加 `.monospacedDigit()`，避免每次自动刷新时整块内容左右抖动。
+- **状态标签**：用 SF Symbol（`exclamationmark.triangle.fill`、`thermometer.medium` 等）而不是 emoji，字号与粗细跟随系统字体。
+
 ## 相对两个原 App 的改动
 
 **新增的联动**

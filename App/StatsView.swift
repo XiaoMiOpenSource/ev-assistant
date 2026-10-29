@@ -141,7 +141,7 @@ struct StatsView: View {
             guard b > 0, a > 0 else { return (nil, .secondary, "—") }
             let d = (a - b) / b * 100
             // 中国习惯：费用/电耗上涨用红色警示，下降用绿色
-            let color: Color = d >= 0 ? .red : .green
+            let color: Color = d >= 0 ? Color.dsDanger : Color.dsOK
             let arrow = d >= 0 ? "▲" : "▼"
             return (d, color, arrow)
         }
@@ -283,7 +283,7 @@ struct StatsView: View {
                                         Color(red: 0.32, green: 0.25, blue: 0.85)],
                                startPoint: .topLeading, endPoint: .bottomTrailing)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 16)
@@ -401,7 +401,7 @@ struct StatsView: View {
             Text("充电费用 · 近 6 月").font(.headline)
             Chart(series.filter { inLast6($0.monthKey) }) { p in
                 BarMark(x: .value("月份", shortMonth(p.monthKey)), y: .value("费用", p.cost))
-                    .foregroundStyle(Color.orange.gradient)
+                    .foregroundStyle(Color.dsWarn.gradient)
             }
             .chartYAxis {
                 AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { _ in
@@ -427,10 +427,10 @@ struct StatsView: View {
             } else {
                 Chart(data) { p in
                     LineMark(x: .value("月份", shortMonth(p.monthKey)), y: .value("电耗", p.consumption!))
-                        .foregroundStyle(Color.blue)
+                        .foregroundStyle(Color.brand)
                         .interpolationMethod(.catmullRom)
                     PointMark(x: .value("月份", shortMonth(p.monthKey)), y: .value("电耗", p.consumption!))
-                        .foregroundStyle(Color.blue)
+                        .foregroundStyle(Color.brand)
                 }
                 .frame(height: 150)
             }

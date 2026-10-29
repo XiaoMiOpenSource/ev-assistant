@@ -123,7 +123,7 @@ struct DashboardView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
@@ -140,7 +140,7 @@ struct DashboardView: View {
                 .font(.footnote.weight(.semibold))
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.inner, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
@@ -157,21 +157,21 @@ struct DashboardView: View {
         }
         .padding(30)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
     private func errorBanner(_ text: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(palette.red)
+                .foregroundColor(Color.dsDanger)
             Text(text)
                 .font(.footnote)
                 .foregroundColor(.secondary)
             Spacer()
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.inner, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
@@ -272,7 +272,7 @@ struct DashboardView: View {
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
@@ -303,7 +303,7 @@ struct DashboardView: View {
                     Circle().stroke(palette.darkGray, lineWidth: 8)
                     Circle()
                         .trim(from: 0, to: CGFloat(battery) / 100)
-                        .stroke(battery <= model.config.lowBatteryThreshold ? palette.red : palette.green,
+                        .stroke(battery <= model.config.lowBatteryThreshold ? Color.dsDanger : Color.dsOK,
                                 style: StrokeStyle(lineWidth: 8, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 0) {
@@ -335,7 +335,7 @@ struct DashboardView: View {
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
@@ -357,7 +357,7 @@ struct DashboardView: View {
         HStack(spacing: 12) {
             Image(systemName: "battery.25")
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundColor(palette.red)
+                .foregroundColor(Color.dsDanger)
             VStack(alignment: .leading, spacing: 3) {
                 Text("电量低，请及时充电")
                     .font(.subheadline.weight(.bold))
@@ -371,11 +371,11 @@ struct DashboardView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(palette.red.opacity(0.12)))
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+            .fill(Color.dsDanger.opacity(0.12)))
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(palette.red.opacity(0.35), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                .stroke(Color.dsDanger.opacity(0.35), lineWidth: 1)
         )
     }
 
@@ -404,13 +404,13 @@ struct DashboardView: View {
             statCell(icon: "speedometer", iconColor: palette.orange,
                      value: "\(VehicleFormat.odometer(snap.odometer)) km",
                      label: "总里程")
-            statCell(icon: "thermometer.medium", iconColor: palette.red,
+            statCell(icon: "thermometer.medium", iconColor: Color.dsDanger,
                      value: (snap.interiorTemp.map { $0 == "--" ? "--" : $0 } ?? "--") + " °C",
                      label: "车内温度")
-            statCell(icon: "bolt.batteryblock.fill", iconColor: palette.green,
+            statCell(icon: "bolt.batteryblock.fill", iconColor: Color.dsOK,
                      value: "\(VehicleFormat.voltageText(snap.voltage)) V",
                      label: "小电瓶电压")
-            statCell(icon: "battery.100", iconColor: palette.green,
+            statCell(icon: "battery.100", iconColor: Color.dsOK,
                      value: fullDynamic,
                      label: "满电动态续航")
             statCell(icon: "target", iconColor: palette.blue,
@@ -427,6 +427,7 @@ struct DashboardView: View {
             Text(value)
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundColor(palette.text)
+                .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(label)
@@ -435,7 +436,7 @@ struct DashboardView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
@@ -447,7 +448,7 @@ struct DashboardView: View {
                 Circle().fill(on ? palette.lockOn : palette.lockOff)
                 Image(systemName: on ? "lock.fill" : "lock.open.fill")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(on ? palette.green : palette.red)
+                    .foregroundColor(on ? Color.dsOK : Color.dsDanger)
             }
             .frame(width: 44, height: 44)
 
@@ -462,14 +463,14 @@ struct DashboardView: View {
             Spacer(minLength: 0)
             Text(on ? "已锁好" : "未上锁")
                 .font(.caption.weight(.semibold))
-                .foregroundColor(on ? palette.green : palette.red)
+                .foregroundColor(on ? Color.dsOK : Color.dsDanger)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(Capsule().fill(on ? palette.lockOn : palette.lockOff))
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
@@ -484,7 +485,7 @@ struct DashboardView: View {
                     Circle().fill(on ? palette.doorOn : palette.doorOff)
                     Image(systemName: on ? "car.side.fill" : "car.side")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(on ? palette.green : palette.orange)
+                        .foregroundColor(on ? Color.dsOK : palette.orange)
                 }
                 .frame(width: 44, height: 44)
 
@@ -499,7 +500,7 @@ struct DashboardView: View {
                 Spacer(minLength: 0)
                 Text(on ? "全部关闭" : "\(opens.count) 处未关")
                     .font(.caption.weight(.semibold))
-                    .foregroundColor(on ? palette.green : palette.orange)
+                    .foregroundColor(on ? Color.dsOK : palette.orange)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(Capsule().fill(on ? palette.doorOn : palette.doorOff))
@@ -544,7 +545,7 @@ struct DashboardView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
@@ -571,7 +572,7 @@ struct DashboardView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
@@ -583,6 +584,7 @@ struct DashboardView: View {
             Text(VehicleFormat.pressure(v) + " bar")
                 .font(.body.weight(.semibold))
                 .foregroundColor(palette.text)
+                .monospacedDigit()
             Spacer(minLength: 0)
         }
     }
@@ -620,11 +622,11 @@ struct DashboardView: View {
             HStack(spacing: 6) {
                 Image(systemName: snap.isFresh ? "checkmark.circle.fill" : "clock")
                     .font(.system(size: 13))
-                    .foregroundColor(snap.isFresh ? palette.green : palette.sub)
+                    .foregroundColor(snap.isFresh ? Color.dsOK : palette.sub)
                 Text("更新于 " + VehicleFormat.timeText(snap.fetchTime)
                      + (snap.isFresh ? "" : "（数据已超过 15 分钟）"))
                     .font(.caption)
-                    .foregroundColor(snap.isFresh ? palette.green : palette.sub)
+                    .foregroundColor(snap.isFresh ? Color.dsOK : palette.sub)
                 Spacer()
                 Button { Task { await model.refresh() } } label: {
                     Image(systemName: "arrow.clockwise")
@@ -651,7 +653,7 @@ struct DashboardView: View {
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
