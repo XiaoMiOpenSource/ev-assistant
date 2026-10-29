@@ -21,6 +21,8 @@ struct RecordsView: View {
     }
 
     var body: some View {
+        // 崩溃定位用：这行日志出现、但后面没有 Records.content，说明崩在 body 渲染的第一步
+        let _ = DiagLog.once("records.body", "records=\(store.records.count) vehicles=\(store.vehicles.count) active=\(store.activeVehicle.map { _ in "有" } ?? "nil")")
         NavigationStack {
             Group {
                 if let v = store.activeVehicle {
@@ -142,6 +144,7 @@ struct RecordsView: View {
     private func content(_ v: Vehicle) -> some View {
         let rows = filteredRows(for: v)
         let totals = Calculator.totals(Calculator.derivedRows(store.records, for: v.id))
+        DiagLog.once("records.content", "rows=\(rows.count) totals=\(totals.count)")
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // 顶部摘要行（三项居中，与下方卡片同一套留白/圆角）
@@ -219,6 +222,7 @@ struct RecordsView: View {
         let summary = Calculator.bestRate(rows: rows, vehicle: v, window: store.window)
         let excluded = Calculator.excludedCount(rows)
         let rate = summary?.rate
+        DiagLog.once("records.rateCard", "summary=\(summary.map { _ in "有" } ?? "nil") excluded=\(excluded)")
 
         return Button { showRateDetail = true } label: {
             VStack(alignment: .leading, spacing: 8) {
@@ -308,8 +312,8 @@ struct RecordsView: View {
     }
     private func shortLabel(_ key: String) -> String {
         let p = key.split(separator: "-")
-        guard p.count == 2 else { return key }
-        return "\(Int(p[1])!)月"
+        guard p.count == 2, let month = Int(p[1]) else { return key }
+        return "\(month)月"
     }
 
     private func filteredRows(for v: Vehicle) -> [DerivedRow] {
@@ -365,7 +369,8 @@ struct RecordsView: View {
     private var summaryDivider: some View { Divider().frame(height: 34) }
 
     private func emptyState(text: String) -> some View {
-        VStack(spacing: 14) {
+        DiagLog.once("records.emptyState", "无记录空态")
+        return VStack(spacing: 14) {
             Image(systemName: "battery.75percent").font(.system(size: 46)).foregroundStyle(.secondary)
             Text(text).multilineTextAlignment(.center).font(.subheadline).foregroundStyle(.secondary)
             if !hasFilters {

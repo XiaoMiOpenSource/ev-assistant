@@ -27,6 +27,16 @@ enum DiagLog {
         trim()
     }
 
+    /// 同一个 key 只写一次。
+    /// 视图 body 可能每秒重绘多次，逐次落盘既会把日志冲掉、也会拖慢渲染，所以定位用的标记走这里。
+    private static var onceKeys: Set<String> = []
+
+    static func once(_ key: String, _ message: String) {
+        if onceKeys.contains(key) { return }
+        onceKeys.insert(key)
+        mark("[\(key)] \(message)")
+    }
+
     /// 只留最近 400 行，避免日志无限增长
     private static func trim() {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return }

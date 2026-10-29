@@ -25,6 +25,7 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        let _ = DiagLog.once("settings.body", "vehicles=\(store.vehicles.count) records=\(store.records.count)")
         NavigationStack {
             // 首层只放「目录」：六段配置各进自己的二级页面。
             // 以前所有 Section 挤在一个 Form 里，要滚很久才能找到预算或备份入口。

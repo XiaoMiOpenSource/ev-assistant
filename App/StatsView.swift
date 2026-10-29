@@ -12,6 +12,7 @@ struct StatsView: View {
     @State private var pdfBusy = false
 
     var body: some View {
+        let _ = DiagLog.once("stats.body", "records=\(store.records.count)")
         NavigationStack {
             Group {
                 if let v = store.activeVehicle {
@@ -300,7 +301,7 @@ struct StatsView: View {
                     .font(.system(size: 11.5, weight: .semibold))
                     .foregroundColor(.white.opacity(0.9))
                 Spacer(minLength: 8)
-                Text(value != nil ? "\(Int(value!.rounded()))%" : "—")
+                Text(value.map { v in v.isFinite ? "\(Int(v.rounded()))%" : "—" } ?? "—")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .lineLimit(1)
@@ -491,8 +492,8 @@ struct StatsView: View {
 
     private func shortMonth(_ key: String) -> String {
         let parts = key.split(separator: "-")
-        guard parts.count == 2 else { return key }
-        return "\(Int(parts[1])!)月"
+        guard parts.count == 2, let month = Int(parts[1]) else { return key }
+        return "\(month)月"
     }
 
     // MARK: 按桩型

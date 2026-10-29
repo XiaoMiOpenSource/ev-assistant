@@ -16,6 +16,7 @@ struct DashboardView: View {
     }
 
     var body: some View {
+        let _ = DiagLog.once("dash.body", "snapshot=\(model.snapshot.map { _ in "有" } ?? "nil") loading=\(model.isLoading)")
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
