@@ -202,14 +202,14 @@ struct DashboardView: View {
         }
     }
 
-    /// 主卡 —— 车辆身份 + 电量 / 续航 / 里程（原 identityCard + energyCard 合并）
+    /// 主卡 —— G-L1 排版：左边一个电量仪表，右边是结论，底部胶囊流收纳台账
     ///
-    /// 合并理由：两张卡各自只有 2–3 行信息，占掉整屏 1/4 却要扫两次；
-    /// 合起来后节奏是「车型 → 车牌/状态 → 续航+电量环 → 总里程/VIN」，
-    /// 视线从左上到右下一条线走完，不需要在两张卡之间跳。
-    ///
-    /// 字体规范：主数值 SF Rounded Heavy（续航 36 / 环内 26），标题 18 Semibold，
-    /// 次级 16 Semibold，标签与单位 12 Regular 次级灰；数字一律 monospacedDigit 防跳动。
+    /// 骨架（两条竖轴，不用横排数据行）：
+    ///   左轴 = 电量环（与上方车型、车牌共用同一条左边线）
+    ///   右轴 = 续航大数字 + 「km 剩余续航」+「满电约 xxx km」，三行与环等高
+    ///   底部 = WrapLayout 胶囊流（总里程 / VIN / 更新时间），宽度不够自动折行
+    /// 数据一个都不少：车型、车名、车牌、车身色、续航、电量、满电动态续航、
+    /// 总里程、VIN、充电状态、数据新鲜度都在卡内，只是分了三层字号。
     private func heroCard(_ snap: VehicleSnapshot) -> some View {
         let plate = model.config.carPlate
         let colorName = AppConfig.colorNames[model.config.carColor] ?? model.config.carColor
@@ -217,16 +217,23 @@ struct DashboardView: View {
         let vin = model.config.carVin
         let battery = min(max(snap.battery ?? 0, 0), 100)
         let lowBattery = battery <= model.config.lowBatteryThreshold
+        let rangeText = snap.range.map { $0 == "--" ? "--" : $0 } ?? "--"
+        // 满电状态动态续航（km）= 当前续航 ÷ 当前电量 × 100
+        let fullDynamic: String = {
+            guard let b = snap.battery, b > 0,
+                  let r = snap.range.flatMap(Double.init), r > 0 else { return "--" }
+            return "\(Int((r / Double(b) * 100.0).rounded())) km"
+        }()
 
         return VStack(alignment: .leading, spacing: 14) {
-            // ① 车型 + 车身色
+            // ① 身份：车型/车名 + 车身色
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(model.config.carModel + (model.config.carName.isEmpty ? "" : " · " + model.config.carName))
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(palette.text)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Spacer(minLength: 6)
+                Spacer(minLength: 8)
                 HStack(spacing: 5) {
                     Circle()
                         .fill(carColorDot)
@@ -242,12 +249,9 @@ struct DashboardView: View {
             // ② 车牌 + 状态胶囊（充电中 / 数据过期）
             HStack(spacing: 8) {
                 Text(plate.isEmpty ? "--" : plate)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(palette.sub)
                     .lineLimit(1)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(palette.blue))
                 if charging {
                     HStack(spacing: 3) {
                         Image(systemName: "bolt.fill").font(.system(size: 9, weight: .bold))
@@ -255,7 +259,7 @@ struct DashboardView: View {
                     }
                     .foregroundColor(palette.orange)
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 3)
                     .background(Capsule().fill(palette.orange.opacity(0.14)))
                 }
                 if !snap.isFresh {
@@ -265,78 +269,67 @@ struct DashboardView: View {
                     }
                     .foregroundColor(Color.dsWarn)
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 3)
                     .background(Capsule().fill(Color.dsWarn.opacity(0.14)))
                 }
                 Spacer(minLength: 0)
             }
 
-            // ③ 续航焦点 + 电量环
+            // ③ 左仪表 + 右结论
             HStack(alignment: .center, spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("剩余续航")
-                        .font(.system(size: 12))
-                        .foregroundColor(palette.sub)
+                ZStack {
+                    Circle()
+                        .stroke(palette.darkGray, lineWidth: 9)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(battery) / 100)
+                        .stroke(lowBattery ? Color.dsDanger : Color.dsOK,
+                                style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    VStack(spacing: 0) {
+                        Text("\(snap.battery ?? 0)%")
+                            .font(.system(size: 22, weight: .heavy, design: .rounded))
+                            .foregroundColor(palette.text)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Text("电量")
+                            .font(.system(size: 10))
+                            .foregroundColor(palette.sub)
+                    }
+                }
+                .frame(width: 84, height: 84)
+
+                VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text(snap.range ?? "--")
-                            .font(.system(size: 36, weight: .heavy, design: .rounded))
+                        Text(rangeText)
+                            .font(.system(size: 42, weight: .heavy, design: .rounded))
                             .foregroundColor(palette.text)
                             .monospacedDigit()
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
                         Text("km")
-                            .font(.system(size: 14))
+                            .font(.system(size: 15))
                             .foregroundColor(palette.sub)
                     }
+                    Text("剩余续航")
+                        .font(.system(size: 13))
+                        .foregroundColor(palette.sub)
+                    Text("满电约 \(fullDynamic)")
+                        .font(.system(size: 12))
+                        .foregroundColor(palette.sub.opacity(0.85))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 Spacer(minLength: 0)
-                ZStack {
-                    Circle().stroke(palette.darkGray, lineWidth: 8)
-                    Circle()
-                        .trim(from: 0, to: CGFloat(battery) / 100)
-                        .stroke(lowBattery ? Color.dsDanger : Color.dsOK,
-                                style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    VStack(spacing: 0) {
-                        Text("\(snap.battery ?? 0)")
-                            .font(.system(size: 26, weight: .heavy, design: .rounded))
-                            .foregroundColor(palette.text)
-                            .monospacedDigit()
-                        Text("%").font(.system(size: 8)).foregroundColor(palette.sub)
-                    }
-                }
-                .frame(width: 78, height: 78)
             }
 
-            Rectangle()
-                .fill(palette.darkGray)
-                .frame(height: 1)
-
-            // ④ 总里程 + VIN 脚注
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("总里程")
-                    .font(.system(size: 12))
-                    .foregroundColor(palette.sub)
-                Text("\(VehicleFormat.odometer(snap.odometer)) km")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(palette.text)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Spacer(minLength: 8)
+            // ④ 胶囊流：宽度不够自动折行，不做列对齐
+            WrapLayout(spacing: 8, lineSpacing: 6) {
+                chip(icon: "road.lanes", text: "\(VehicleFormat.odometer(snap.odometer)) km")
                 if !vin.isEmpty {
-                    HStack(spacing: 6) {
-                        Text("VIN")
-                            .font(.system(size: 10, weight: .semibold))
-                            .tracking(0.6)
-                            .foregroundColor(palette.sub.opacity(0.7))
-                        Text(vin)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundColor(palette.sub)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
+                    chip(icon: "number", text: "VIN \(vin)")
                 }
+                chip(icon: "clock", text: freshnessText(snap))
             }
         }
         .padding(Space.card)
@@ -344,6 +337,32 @@ struct DashboardView: View {
         .dsCard()
     }
 
+    /// 胶囊流里的一枚标签
+    private func chip(icon: String, text: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .medium))
+            Text(text)
+                .font(.system(size: 11))
+                .monospacedDigit()
+                .lineLimit(1)
+        }
+        .foregroundColor(palette.sub)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(Color.dsStroke.opacity(0.45)))
+    }
+
+    /// 数据新鲜度：车况接口每次刷新都会写 fetchTime
+    private func freshnessText(_ snap: VehicleSnapshot) -> String {
+        guard let t = snap.fetchTime else { return "更新时间未知" }
+        let seconds = Date().timeIntervalSince(t)
+        guard seconds.isFinite, seconds >= 0 else { return "刚刚更新" }
+        if seconds < 60 { return "刚刚更新" }
+        if seconds < 3600 { return "\(Int(seconds / 60)) 分钟前" }
+        if seconds < 86_400 { return "\(Int(seconds / 3600)) 小时前" }
+        return "\(Int(seconds / 86_400)) 天前"
+    }
     /// 车身颜色展示色点（与 AppConfig.colorNames 的 key 一一对应；白车靠外层浅描边区分底色）
     private var carColorDot: Color {
         switch model.config.carColor {
@@ -385,13 +404,13 @@ struct DashboardView: View {
     }
 
     private func statGrid(_ snap: VehicleSnapshot) -> some View {
-        // 满电状态动态续航（km）= 当前续航 ÷ 当前电量 × 100（按当下能耗推算满电可跑里程）
+        // 满电状态动态续航（km）= 当前续航 ÷ 当前电量 × 100（主卡已展示，这里只用它算达成率）
         let fullDynamicKM: Double? = {
             guard let b = snap.battery, b > 0,
                   let r = snap.range.flatMap(Double.init), r > 0 else { return nil }
             return r / Double(b) * 100.0
         }()
-        let fullDynamic: String = fullDynamicKM.map { "\(Int($0.rounded())) km" } ?? "--"
+
         // CLTC 标称续航：设置里手动填写优先，其次接口上报的 battery_pack_range
         let cltcNominal: Int? = {
             if let m = model.config.cltcNominal, m > 0 { return m }
@@ -402,7 +421,7 @@ struct DashboardView: View {
             guard let d = fullDynamicKM, let n = cltcNominal, n > 0 else { return "--" }
             return String(format: "%.1f%%", d / Double(n) * 100.0)
         }()
-        // 续航里程 / 总里程已经写在主卡里，这里不再重复，只留「主卡放不下」的四个细项
+        // 续航、总里程、满电动态续航都已在主卡；这一格放「CLTC 标称」——它正是达成率的分母，放一起才好对读
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
             statCell(icon: "thermometer.medium", iconColor: Color.dsDanger,
                      value: (snap.interiorTemp.map { $0 == "--" ? "--" : $0 } ?? "--") + " °C",
@@ -410,9 +429,9 @@ struct DashboardView: View {
             statCell(icon: "bolt.batteryblock.fill", iconColor: Color.dsOK,
                      value: "\(VehicleFormat.voltageText(snap.voltage)) V",
                      label: "小电瓶电压")
-            statCell(icon: "battery.100", iconColor: Color.dsOK,
-                     value: fullDynamic,
-                     label: "满电动态续航")
+            statCell(icon: "gauge.medium", iconColor: palette.blue,
+                     value: cltcNominal.map { "\($0) km" } ?? "--",
+                     label: "CLTC 标称")
             statCell(icon: "target", iconColor: palette.blue,
                      value: cltcAchieve,
                      label: "折算达成率")
