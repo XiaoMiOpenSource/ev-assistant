@@ -18,6 +18,12 @@ settings:
     CODE_SIGNING_REQUIRED: "NO"
     DEVELOPMENT_TEAM: ""
     SUPPORTS_MACCATALYST: "NO"
+    # 桌面显示名。做成变量是为了「测试包」能叫「电车助手·测试」，一眼和正式版区分。
+    APP_DISPLAY_NAME: "电车助手"
+    # 包名后缀。正式版留空；测试包传 .test，得到
+    #   com.evstats.EVLogger.test / com.evstats.EVLogger.test.widget
+    # 后缀插在 .widget 之前，扩展包名才是主包名的子串（iOS 要求）。
+    BUNDLE_ID_SUFFIX: ""
 
 targets:
   MG4Mate:
@@ -31,7 +37,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: MG4Mate
-        PRODUCT_BUNDLE_IDENTIFIER: com.evstats.EVLogger
+        PRODUCT_BUNDLE_IDENTIFIER: "com.evstats.EVLogger$(BUNDLE_ID_SUFFIX)"
         INFOPLIST_FILE: Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: Resources/MG4Mate.entitlements
         TARGETED_DEVICE_FAMILY: "1"
@@ -51,7 +57,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: MG4MateWidget
-        PRODUCT_BUNDLE_IDENTIFIER: com.evstats.EVLogger.widget
+        PRODUCT_BUNDLE_IDENTIFIER: "com.evstats.EVLogger$(BUNDLE_ID_SUFFIX).widget"
         INFOPLIST_FILE: Resources/Widget/Info.plist
         CODE_SIGN_ENTITLEMENTS: Resources/Widget/MG4MateWidget.entitlements
         TARGETED_DEVICE_FAMILY: "1"

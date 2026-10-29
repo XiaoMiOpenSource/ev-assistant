@@ -110,13 +110,33 @@ xcodegen generate                           # 生成 MG4Mate.xcodeproj（brew in
 com.apple.security.application-groups = [group.com.evstats.EVLogger, group.mg4widget]
 ```
 
+### 出「测试包」而不是正式包
+
+想让改动和手机上已装好的正式版**并存**（不覆盖正式版的数据），用 `.test` 后缀出包：
+
+```bash
+TEST_BUILD=1 ./scripts/build_device.sh          # com.evstats.EVLogger.test，桌面名「电车助手·测试」
+PACKAGE_SUFFIX=_test ./scripts/package_ipa.sh   # 产物 dist/EVHelper_v1.4_test.ipa / .tipa
+```
+
+- 包名后缀来自 `project.yml` 的 `BUNDLE_ID_SUFFIX`（正式版留空）：主 App 是 `com.evstats.EVLogger<后缀>`，扩展是 `com.evstats.EVLogger<后缀>.widget`。后缀插在 `.widget` 之前，保证「扩展包名以主包名开头」这条 iOS 硬要求始终成立。
+- 桌面显示名来自 `project.yml` 的 `APP_DISPLAY_NAME`，两个 Info.plist 里写的是 `$(APP_DISPLAY_NAME)`。
+- iOS 按 bundle id 分配沙盒容器，所以测试版的充电记录、数据库、偏好都是独立的：装、删、乱填都不会碰到正式版。
+- 唯一共用的是 App Group（`group.com.evstats.EVLogger` / `group.mg4widget`）：车辆接口地址与小组件快照两边共享，测试版**不用重新填接口地址**；测试版改了设置会同步到正式版，介意的话测完在正式版里重新保存一次即可。
+- 测试通过后出正式包：不设 `TEST_BUILD` 再跑一遍即可（或 GitHub Actions 手动运行，`variant` 选 `release`）。
+
 ## GitHub Actions 构建 IPA
 
-仓库提供 `.github/workflows/build-ipa.yml`：推送到 `main`，或在 GitHub → **Actions → Build iOS IPA → Run workflow** 手动运行。
+仓库提供 `.github/workflows/build-ipa.yml`：推送到 `main`，或在 GitHub → **Actions → Build iOS IPA → Run workflow** 手动运行。手动运行时可选择 `variant`：
+
+- `test`（默认）：出测试包，包名 `com.evstats.EVLogger.test`、桌面名「电车助手·测试」，可与正式版并存。
+- `release`：出正式包，包名 `com.evstats.EVLogger`。
+
+推送到 `main` 一律按 `release` 出正式包。
 
 - Runner：`macos-15` / Xcode 16.2，主 App 与 Widget 的最低系统版本均为 **iOS 16.0**。
 - 不需要 Apple 开发者证书：先构建未签名真机包，再 ad-hoc 重签并注入 App Group 权限。
-- 运行完成后在对应 Run 的 **Artifacts** 下载 `EVHelper-iOS16-*`：内含 `.ipa`、`.tipa` 和 `SHA256SUMS.txt`，保留 14 天。
+- 运行完成后在对应 Run 的 **Artifacts** 下载 `EVHelper-iOS16-<variant>-<run>`：内含 `.ipa`、`.tipa` 和 `SHA256SUMS.txt`，保留 14 天。
 - `.tipa` 供 TrollStore 安装；`.ipa` 可用个人/企业签名工具补签。工作流不使用或保存 Gitee/GitHub 私人令牌，也无需配置 Secrets。
 
 ## 安装

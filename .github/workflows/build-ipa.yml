@@ -8,6 +8,12 @@ on:
       - '*.md'
       - 'fix-record-consumption.patch'
   workflow_dispatch:
+    inputs:
+      variant:
+        description: '构建哪一版（test = 包名 .test 后缀、可与正式版并存；release = 正式包名）'
+        type: choice
+        options: [test, release]
+        default: test
 
 permissions:
   contents: read
@@ -42,6 +48,30 @@ jobs:
           brew install xcodegen
           xcodegen --version
 
+      - name: Resolve build variant
+        run: |
+          # push 到 main 一律出正式包；手动触发按输入选择，默认 test。
+          VARIANT="${{ github.event.inputs.variant }}"
+          [ -n "$VARIANT" ] || VARIANT=release
+          if [ "$VARIANT" = "test" ]; then
+            {
+              echo "TEST_BUILD=1"
+              echo "BUNDLE_ID_SUFFIX=.test"
+              echo "APP_DISPLAY_NAME=电车助手·测试"
+              echo "PACKAGE_SUFFIX=_test"
+              echo "ARTIFACT_VARIANT=test"
+            } >> "$GITHUB_ENV"
+          else
+            {
+              echo "TEST_BUILD=0"
+              echo "BUNDLE_ID_SUFFIX="
+              echo "APP_DISPLAY_NAME=电车助手"
+              echo "PACKAGE_SUFFIX="
+              echo "ARTIFACT_VARIANT=release"
+            } >> "$GITHUB_ENV"
+          fi
+          echo "构建变体：$VARIANT（包名 com.evstats.EVLogger${BUNDLE_ID_SUFFIX:-}）"
+
       - name: Verify iOS 16 deployment target
         run: |
           grep -q 'iOS: "16.0"' project.yml
@@ -74,6 +104,21 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print MinimumOSVersion' "$APP/Info.plist")" = "16.0"
           test -d "$APP/PlugIns/MG4MateWidget.appex"
           test "$(/usr/libexec/PlistBuddy -c 'Print MinimumOSVersion' "$APP/PlugIns/MG4MateWidget.appex/Info.plist")" = "16.0"
+
+          # 包名/显示名必须与所选变体一致：测试包绝不能悄悄盖上正式版的包名
+          MAIN_ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")"
+          APPEX_ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/PlugIns/MG4MateWidget.appex/Info.plist")"
+          DISPLAY="$(/usr/libexec/PlistBuddy -c 'Print CFBundleDisplayName' "$APP/Info.plist")"
+          echo "主程序  $MAIN_ID  $DISPLAY"
+          echo "小组件  $APPEX_ID"
+          test "$MAIN_ID" = "com.evstats.EVLogger${BUNDLE_ID_SUFFIX}"
+          test "$APPEX_ID" = "com.evstats.EVLogger${BUNDLE_ID_SUFFIX}.widget"
+          test "$DISPLAY" = "$APP_DISPLAY_NAME"
+          # 扩展包名必须是主包名的前缀延展，否则 iOS 会当成不相干的两样东西
+          case "$APPEX_ID" in
+            "$MAIN_ID".*) ;;
+            *) echo "appex bundle id 不是主包名的子集：$APPEX_ID"; exit 1 ;;
+          esac
           test -n "$(find dist -maxdepth 1 -name '*.ipa' -print -quit)"
           test -n "$(find dist -maxdepth 1 -name '*.tipa' -print -quit)"
           for artifact in dist/*.ipa dist/*.tipa; do
@@ -86,7 +131,7 @@ jobs:
       - name: Upload IPA artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: EVHelper-iOS16-${{ github.run_number }}
+          name: EVHelper-iOS16-${{ env.ARTIFACT_VARIANT }}-${{ github.run_number }}
           path: |
             dist/*.ipa
             dist/*.tipa

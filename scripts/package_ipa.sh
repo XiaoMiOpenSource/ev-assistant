@@ -12,6 +12,11 @@ APP="build-device/Build/Products/Release-iphoneos/MG4Mate.app"
 
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Info.plist")
 BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$APP/Info.plist")
+BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist")
+DISPLAY_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleDisplayName" "$APP/Info.plist")
+# 测试包（PACKAGE_SUFFIX=_test）另起文件名，避免和正式包混在一个目录里
+NAME_SUFFIX="${PACKAGE_SUFFIX:-}"
+echo "==> $DISPLAY_NAME  $BUNDLE_ID  $VERSION ($BUILD)"
 
 rm -rf dist
 mkdir -p dist/Payload
@@ -28,9 +33,9 @@ codesign -f -s - --timestamp=none \
 echo "==> 校验"
 codesign -dv --entitlements :- "dist/Payload/MG4Mate.app" 2>&1 | grep -E "Identifier|Signature|application-groups" -A2 | head -8
 
-IPA="dist/EVHelper_v${VERSION}.tipa"
+IPA="dist/EVHelper_v${VERSION}${NAME_SUFFIX}.tipa"
 (cd dist && zip -qry "$(basename "$IPA")" Payload)
-cp "$IPA" "dist/EVHelper_v${VERSION}.ipa"
+cp "$IPA" "dist/EVHelper_v${VERSION}${NAME_SUFFIX}.ipa"
 rm -rf dist/Payload
 
 echo ""
