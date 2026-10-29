@@ -126,14 +126,20 @@ jobs:
           MAIN_GROUP="$(/usr/libexec/PlistBuddy -c 'Print MG4AppGroup' "$APP/Info.plist")"
           WIDGET_GROUP="$(/usr/libexec/PlistBuddy -c 'Print MG4WidgetGroup' "$APP/Info.plist")"
           APPEX_GROUP="$(/usr/libexec/PlistBuddy -c 'Print MG4WidgetGroup' "$APP/PlugIns/MG4MateWidget.appex/Info.plist")"
-          echo "App Group  $MAIN_GROUP / $WIDGET_GROUP"
-          test "$MAIN_GROUP" = "$MG4_APP_GROUP"
-          test "$WIDGET_GROUP" = "$MG4_WIDGET_GROUP"
-          test "$APPEX_GROUP" = "$MG4_WIDGET_GROUP"
+          echo "期望 App Group   $MG4_APP_GROUP / $MG4_WIDGET_GROUP"
+          echo "主程序 Info.plist $MAIN_GROUP / $WIDGET_GROUP"
+          echo "扩展   Info.plist $APPEX_GROUP"
+          [ "$MAIN_GROUP" = "$MG4_APP_GROUP" ] || { echo "❌ 主程序 MG4AppGroup=$MAIN_GROUP"; exit 1; }
+          [ "$WIDGET_GROUP" = "$MG4_WIDGET_GROUP" ] || { echo "❌ 主程序 MG4WidgetGroup=$WIDGET_GROUP"; exit 1; }
+          [ "$APPEX_GROUP" = "$MG4_WIDGET_GROUP" ] || { echo "❌ 扩展 MG4WidgetGroup=$APPEX_GROUP"; exit 1; }
           # 签名里也必须真的带上这两个 group，否则 App Group 会静默失效（配置存不住）。
           # 注意看的是打包脚本签过的那份（dist/Payload），构建目录里的是未签名产物。
-          codesign -d --entitlements :- "dist/Payload/MG4Mate.app" 2>&1 | grep -q "$MG4_APP_GROUP"
-          codesign -d --entitlements :- "dist/Payload/MG4Mate.app/PlugIns/MG4MateWidget.appex" 2>&1 | grep -q "$MG4_WIDGET_GROUP"
+          codesign -d --entitlements :- "dist/Payload/MG4Mate.app" > dist/main-ent.txt 2>&1 || true
+          codesign -d --entitlements :- "dist/Payload/MG4Mate.app/PlugIns/MG4MateWidget.appex" > dist/appex-ent.txt 2>&1 || true
+          echo "主程序签名 entitlements："; cat dist/main-ent.txt
+          echo "扩展签名 entitlements："; cat dist/appex-ent.txt
+          grep -qF "$MG4_APP_GROUP" dist/main-ent.txt || { echo "❌ 主程序签名里没有 $MG4_APP_GROUP"; exit 1; }
+          grep -qF "$MG4_WIDGET_GROUP" dist/appex-ent.txt || { echo "❌ 扩展签名里没有 $MG4_WIDGET_GROUP"; exit 1; }
           # 扩展包名必须是主包名的前缀延展，否则 iOS 会当成不相干的两样东西
           case "$APPEX_ID" in
             "$MAIN_ID".*) ;;
