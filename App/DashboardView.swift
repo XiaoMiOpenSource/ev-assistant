@@ -275,11 +275,11 @@ struct DashboardView: View {
                 Spacer(minLength: 0)
             }
 
-            // ③ 左仪表 + 右结论
-            // 环的描边是 .round 圆头，线宽 9 会往圆心外侧多探出约 4.5pt，
-            // 所以间距不能按 16 算（视觉上只剩 11pt 左右，挤）；给到 20 才与
-            // 上方「车型 / 车牌」两行的左边缘节奏一致。
-            HStack(alignment: .center, spacing: 20) {
+            // ③ 左右对称：环占左半边、续航占右半边，两块各自在本半区居中。
+            //    环的圆心与「218」的字面中心落在同一条水平线上，左右视觉重量相等；
+            //    原来环贴左、数字贴环，整段挤在左边，右侧空出一大片。
+            HStack(alignment: .center, spacing: Space.gap) {
+                // 左半：电量仪表
                 ZStack {
                     Circle()
                         .stroke(palette.darkGray, lineWidth: 9)
@@ -301,9 +301,13 @@ struct DashboardView: View {
                     }
                 }
                 .frame(width: 84, height: 84)
-                .padding(.trailing, 2)
+                .frame(maxWidth: .infinity)   // 在本半区居中
 
-                VStack(alignment: .leading, spacing: 3) {
+                // 右半：续航结论（标签在上、数字居中、补充说明在下，与左侧圆环镜像）
+                VStack(spacing: 2) {
+                    Text("剩余续航")
+                        .font(.system(size: 12))
+                        .foregroundColor(palette.sub)
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text(rangeText)
                             .font(.system(size: 42, weight: .heavy, design: .rounded))
@@ -315,16 +319,13 @@ struct DashboardView: View {
                             .font(.system(size: 15))
                             .foregroundColor(palette.sub)
                     }
-                    Text("剩余续航")
-                        .font(.system(size: 13))
-                        .foregroundColor(palette.sub)
                     Text("满电约 \(fullDynamic)")
                         .font(.system(size: 12))
                         .foregroundColor(palette.sub.opacity(0.85))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity)   // 在本半区居中
             }
 
             // ④ 胶囊流：宽度不够自动折行，不做列对齐
