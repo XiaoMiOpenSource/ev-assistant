@@ -276,7 +276,10 @@ struct DashboardView: View {
             }
 
             // ③ 左仪表 + 右结论
-            HStack(alignment: .center, spacing: 16) {
+            // 环的描边是 .round 圆头，线宽 9 会往圆心外侧多探出约 4.5pt，
+            // 所以间距不能按 16 算（视觉上只剩 11pt 左右，挤）；给到 20 才与
+            // 上方「车型 / 车牌」两行的左边缘节奏一致。
+            HStack(alignment: .center, spacing: 20) {
                 ZStack {
                     Circle()
                         .stroke(palette.darkGray, lineWidth: 9)
@@ -298,6 +301,7 @@ struct DashboardView: View {
                     }
                 }
                 .frame(width: 84, height: 84)
+                .padding(.trailing, 2)
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
