@@ -233,7 +233,7 @@ struct DashboardView: View {
                     .foregroundColor(palette.text)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity, alignment: .leading)   // 左半区贴左
+                    .frame(maxWidth: .infinity)   // 左半区居中
 
                 // 右半区居中：与下面三排的右栏共用同一条中线
                 HStack(spacing: 5) {
@@ -278,7 +278,7 @@ struct DashboardView: View {
                         .background(Capsule().fill(Color.dsWarn.opacity(0.14)))
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)   // 左半区贴左
+                .frame(maxWidth: .infinity)   // 左半区居中
 
                 HStack(spacing: 4) {
                     Image(systemName: "clock")
@@ -292,7 +292,7 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity)   // 右半区居中
             }
 
-            // ③ 左栏贴左边缘（与①②两排左线对齐），右栏在其半区内居中。
+            // ③ 左右两栏各自在本半区居中（环居中、续航三段居中）。
             //    环的圆心与「218」的字面中心落在同一条水平线上，左右视觉重量相等；
             //    原来环贴左、数字贴环，整段挤在左边，右侧空出一大片。
             HStack(alignment: .center, spacing: Space.gap) {
@@ -318,7 +318,7 @@ struct DashboardView: View {
                     }
                 }
                 .frame(width: 84, height: 84)
-                .frame(maxWidth: .infinity, alignment: .leading)   // 贴左边缘：与第一排车型、第二排车牌同一条线
+                .frame(maxWidth: .infinity)   // 左半区居中
 
                 // 右半：续航结论（标签在上、数字居中、补充说明在下，与左侧圆环镜像）
                 VStack(spacing: 2) {
@@ -346,7 +346,7 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity)   // 右半区居中（文字也居中）
             }
 
-            // ④ 底行：总里程贴左边缘、VIN 在右半区居中，与③一致
+            // ④ 底行：总里程在左半区居中、VIN 在右半区居中，与③一致
             HStack(alignment: .firstTextBaseline, spacing: Space.gap) {
                 HStack(spacing: 5) {
                     Image(systemName: "road.lanes").font(.system(size: 10))
@@ -357,7 +357,7 @@ struct DashboardView: View {
                 .foregroundColor(palette.sub)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, alignment: .leading)   // 贴左边缘，与电量环同一条线
+                .frame(maxWidth: .infinity)   // 左半区居中
 
                 HStack(spacing: 5) {
                     Image(systemName: "number").font(.system(size: 10))
