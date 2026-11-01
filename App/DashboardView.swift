@@ -6,6 +6,7 @@ import WidgetKit
 /// 仪表页
 struct DashboardView: View {
     @EnvironmentObject private var model: CarModel
+    @EnvironmentObject private var store: Store
     @Environment(\.colorScheme) private var systemScheme
     @State private var showSettings = false
     @State private var showPreview = false
@@ -97,6 +98,7 @@ struct DashboardView: View {
                 guard !didAutoRefresh else { return }
                 didAutoRefresh = true
                 await model.autoRefreshIfNeeded()
+                _ = store.autoRecordCharges(config: model.config)
             }
         }
     }
@@ -196,6 +198,7 @@ struct DashboardView: View {
                 lowBatteryBanner(snap)   // 低电量充电提醒横幅
             }
             safetyCard(snap)     // 门锁 + 门窗：合成「安全状态」，一眼看完
+            autoStatsCard(snap)  // 今日行驶 / 停车掉电 / 最近一次充电（采样推导，无需输入）
             statGrid(snap)
             tyreCard(snap)
             locationCard(snap)
@@ -471,6 +474,67 @@ struct DashboardView: View {
             RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
                 .stroke(Color.dsDanger.opacity(0.35), lineWidth: 1)
         )
+    }
+
+    /// 自动统计卡：今日行驶 / 停车掉电 / 最近一次充电会话
+    /// 全部由采样推导（SharedStore.samples()），用户不需要输入任何东西
+    private func autoStatsCard(_ snap: VehicleSnapshot) -> some View {
+        let packKWh: Double = {
+            if let k = model.config.packKWh, k > 0 { return k }
+            return AppConfig.defaultPackKWh
+        }()
+        let samples = SharedStore.samples()
+        let todayKm = DriveStats.todayDistance(samples)
+        let drop = DriveStats.idleDropPerHour(samples)
+        let sessions = DriveStats.sessions(samples, packKWh: packKWh)
+        let live = sessions.last
+        let lastClosed = sessions.last { $0.isClosed }
+
+        return VStack(alignment: .leading, spacing: 10) {
+            Label("自动统计", systemImage: "chart.line.uptrend.xyaxis")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(palette.text)
+
+            HStack(spacing: Space.gap) {
+                autoMetric("今日行驶", todayKm.map { String(format: "%.1f km", $0) } ?? "--")
+                autoMetric("停车掉电", drop.map { String(format: "%.1f %%/h", $0) } ?? "--")
+            }
+
+            if let live, !live.isClosed {
+                Text("正在充电：\(live.socStart)% → \(live.socEnd)%（\(Int(live.minutes)) 分钟）")
+                    .font(.caption)
+                    .foregroundColor(palette.orange)
+            } else if let lastClosed {
+                Text("最近充电 \(dataTimeText(lastClosed.end))：\(lastClosed.socStart)% → \(lastClosed.socEnd)% · "
+                     + String(format: "%.1f kWh", lastClosed.kwh))
+                    .font(.caption)
+                    .foregroundColor(palette.sub)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            } else {
+                Text("还没采到充电会话——多刷新几次就会自动记录")
+                    .font(.caption)
+                    .foregroundColor(palette.sub)
+            }
+        }
+        .padding(Space.card)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .dsCard()
+    }
+
+    private func autoMetric(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 11))
+                .foregroundColor(palette.sub)
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundColor(palette.text)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func statGrid(_ snap: VehicleSnapshot) -> some View {

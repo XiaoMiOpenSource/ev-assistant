@@ -141,6 +141,10 @@ struct CarSettingsView: View {
                 }
                 .padding(.vertical, 2)
                 Toggle("里程单位为 0.1 km（数值 ÷10）", isOn: $cfg.odometerInDecikm)
+                Toggle("充电会话自动记录", isOn: Binding(
+                    get: { SharedStore.autoRecordEnabled },
+                    set: { SharedStore.setAutoRecord($0) }
+                ))
                 NavigationLink {
                     DiagnosticsView()
                 } label: {

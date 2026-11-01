@@ -67,6 +67,8 @@ struct MG4Service {
         }
         let snapshot = try await fetch(from: url)
         SharedStore.saveSnapshot(snapshot)
+        // 每次刷新留一条采样：自动记录充电会话、今日行驶、停车掉电都靠它
+        SharedStore.appendSample(DriveSample(snapshot: snapshot))
         return snapshot
     }
 

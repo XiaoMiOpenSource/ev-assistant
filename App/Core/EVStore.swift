@@ -177,6 +177,42 @@ final class Store: ObservableObject {
         return ok
     }
 
+    /// 把「已结束的充电会话」自动写成记录：同一段会话只写一次（按结束时间去重）。
+    /// 数据来自 SharedStore 的采样，不需要用户输入；返回本次新增条数。
+    @discardableResult
+    func autoRecordCharges(config: AppConfig) -> Int {
+        guard SharedStore.autoRecordEnabled, let v = activeVehicle else { return 0 }
+        let packKWh: Double = {
+            if let k = config.packKWh, k > 0 { return k }
+            return AppConfig.defaultPackKWh
+        }()
+        let sessions = DriveStats.sessions(SharedStore.samples(), packKWh: packKWh)
+        let lastEnd = SharedStore.lastAutoSessionEnd()
+        let odo = Double(SharedStore.loadSnapshot()?.odometer ?? 0)
+        var made = 0
+        for s in sessions where s.isClosed {
+            if let lastEnd, s.end <= lastEnd { continue }   // 已经记过
+            if s.socEnd <= s.socStart { continue }          // 电量没涨，不算充电
+            if s.minutes < 2 { continue }                   // 太短，可能是抖动
+            let rec = ChargeRecord(id: UUID(),
+                                   vehicleID: v.id,
+                                   date: s.end,
+                                   odometerKm: odo,
+                                   energyKWh: (s.kwh * 10).rounded() / 10,
+                                   costCNY: 0,
+                                   chargerType: ChargerType.slow.rawValue,
+                                   socBefore: Double(s.socStart),
+                                   socAfter: Double(s.socEnd),
+                                   note: "自动记录" + (s.address.map { "（\($0)）" } ?? ""),
+                                   createdAt: Date())
+            if saveRecordQuiet(rec) {
+                SharedStore.setLastAutoSessionEnd(s.end)
+                made += 1
+            }
+        }
+        return made
+    }
+
     @discardableResult
     func deleteRecord(_ id: UUID) -> Bool {
         deleteTemp(for: id)

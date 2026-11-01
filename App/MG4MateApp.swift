@@ -27,6 +27,10 @@ struct MG4MateApp: App {
                 .environmentObject(carModel)
                 .tint(.brand)
                 .preferredColorScheme(forcedScheme)
+                // 启动即补一次自动记录：即使这次没打开车况页，攒下的充电会话也会落成记录
+                .task {
+                    _ = store.autoRecordCharges(config: SharedStore.loadConfig())
+                }
         }
     }
 }

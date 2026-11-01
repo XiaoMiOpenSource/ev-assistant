@@ -151,4 +151,154 @@ enum SharedStore {
     static func clearLowReminder() {
         UserDefaults.standard.removeObject(forKey: lowLastKey)
     }
+    // ---------- 行驶 / 充电采样（自动统计的数据基础）----------
+
+    static let samplesKey = "mg4.samples"
+    static let autoRecordKey = "mg4.autoRecord"
+    static let lastAutoSessionKey = "mg4.lastAutoSession"
+
+    static func samples() -> [DriveSample] {
+        guard let defaults, let data = defaults.data(forKey: samplesKey),
+              let arr = try? JSONDecoder().decode([DriveSample].self, from: data) else { return [] }
+        return arr
+    }
+
+    /// 追加一条采样：1 分钟内重复刷新只保留最新一条，总条数封顶（约 7 天）
+    static func appendSample(_ s: DriveSample) {
+        var arr = samples()
+        if let last = arr.last, abs(s.t.timeIntervalSince(last.t)) < 60 {
+            arr[arr.count - 1] = s
+        } else {
+            arr.append(s)
+        }
+        if arr.count > DriveStats.maxSamples {
+            arr.removeFirst(arr.count - DriveStats.maxSamples)
+        }
+        if let data = try? JSONEncoder().encode(arr) {
+            defaults?.set(data, forKey: samplesKey)
+        }
+    }
+
+    /// 是否自动把「已结束的充电会话」写成充电记录（默认开）
+    static var autoRecordEnabled: Bool {
+        (defaults?.object(forKey: autoRecordKey) as? Bool) ?? true
+    }
+    static func setAutoRecord(_ on: Bool) {
+        defaults?.set(on, forKey: autoRecordKey)
+    }
+
+    /// 上次自动记录的会话结束时间：用于去重，避免同一段充电反复写记录
+    static func lastAutoSessionEnd() -> Date? {
+        defaults?.object(forKey: lastAutoSessionKey) as? Date
+    }
+    static func setLastAutoSessionEnd(_ d: Date) {
+        defaults?.set(d, forKey: lastAutoSessionKey)
+    }
+}
+
+
+// ============================================================
+// 行驶 / 充电采样与统计（自动记录的数据基础）
+// ============================================================
+
+/// 一次车况刷新留下的一条采样。字段刻意少而稳：只保留能推算出「行驶 / 掉电 / 充电」的最小集合。
+struct DriveSample: Codable, Hashable {
+    var t: Date
+    var soc: Int?
+    var rangeKm: Int?
+    var odoKm: Int?
+    var charging: Bool
+    var chargeCode: Int?
+    var lat: Double?
+    var lng: Double?
+    var address: String?
+
+    init(snapshot s: VehicleSnapshot, at time: Date = Date()) {
+        t = time
+        soc = s.battery
+        rangeKm = s.range.flatMap { Int($0) }
+        odoKm = s.odometer
+        charging = s.charging == true
+        chargeCode = s.chargeStatusCode
+        lat = s.lat
+        lng = s.lng
+        address = s.address
+    }
+}
+
+/// 由采样序列推导出的充电会话（不落库，随时可重算）
+struct ChargeSession: Hashable {
+    var start: Date
+    var end: Date
+    var socStart: Int
+    var socEnd: Int
+    var address: String?
+    /// 会话之后已经出现过「未充电」采样 → 这段充电结束了
+    var isClosed: Bool
+    /// 按 SOC 差 × 电池容量估算的充入电量（kWh）
+    var kwh: Double
+    var minutes: Double { max(0, end.timeIntervalSince(start)) / 60.0 }
+}
+
+enum DriveStats {
+    /// 采样上限：约 7 天（按 5–15 分钟一次的刷新节奏）
+    static let maxSamples = 2000
+
+    /// 把采样切成充电会话；正在充的那段 isClosed = false，不自动记录
+    static func sessions(_ samples: [DriveSample], packKWh: Double) -> [ChargeSession] {
+        guard !samples.isEmpty else { return [] }
+        var out: [ChargeSession] = []
+        var i = 0
+        while i < samples.count {
+            guard samples[i].charging else { i += 1; continue }
+            // 起点电量取「插枪前最后一次采样」，比会话内第一条更接近真实起点
+            var socStart = samples[i].soc ?? 0
+            if i > 0, let prev = samples[i - 1].soc { socStart = prev }
+            var last = samples[i]
+            var j = i
+            while j < samples.count, samples[j].charging {
+                last = samples[j]
+                j += 1
+            }
+            let socEnd = last.soc ?? socStart
+            let delta = max(0, socEnd - socStart)
+            out.append(ChargeSession(start: samples[i].t,
+                                     end: last.t,
+                                     socStart: socStart,
+                                     socEnd: socEnd,
+                                     address: last.address,
+                                     isClosed: j < samples.count,
+                                     kwh: Double(delta) / 100.0 * max(packKWh, 0)))
+            i = j
+        }
+        return out
+    }
+
+    /// 今日行驶里程（km）：今天采样里里程表的最大正差
+    static func todayDistance(_ samples: [DriveSample], now: Date = Date()) -> Double? {
+        let cal = Calendar.current
+        let today = samples.filter { cal.isDate($0.t, inSameDayAs: now) }
+            .compactMap { $0.odoKm.map(Double.init) }
+        guard let lo = today.min(), let hi = today.max(), hi > lo else { return nil }
+        return hi - lo
+    }
+
+    /// 最近一次「非充电」窗口的平均掉电速率（%/小时）；充电段会被跳过
+    static func idleDropPerHour(_ samples: [DriveSample], hours: Double = 6, now: Date = Date()) -> Double? {
+        let since = now.addingTimeInterval(-hours * 3600)
+        let idle = samples.filter { !$0.charging && $0.t >= since }.compactMap { s -> (Date, Int)? in
+            guard let soc = s.soc else { return nil }
+            return (s.t, soc)
+        }
+        guard let first = idle.first, let last = idle.last, idle.count >= 2 else { return nil }
+        let span = last.0.timeIntervalSince(first.0) / 3600.0
+        guard span > 0.2 else { return nil }
+        let drop = Double(first.1 - last.1)
+        return drop / span
+    }
+
+    /// 最近一次已结束的充电会话
+    static func lastClosedSession(_ samples: [DriveSample], packKWh: Double) -> ChargeSession? {
+        sessions(samples, packKWh: packKWh).last { $0.isClosed }
+    }
 }
