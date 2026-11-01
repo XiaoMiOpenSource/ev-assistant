@@ -285,7 +285,7 @@ struct DashboardView: View {
                 .minimumScaleFactor(0.8)
             }
 
-            // ③ 左右对称：左右各占一半，环在本半区居中、续航三段在本半区居中。
+            // ③ 四排共用两条竖线：左栏（环、总里程）贴左边缘，右栏（续航三段、VIN）贴右边缘。
             //    环的圆心与「218」的字面中心落在同一条水平线上，左右视觉重量相等；
             //    原来环贴左、数字贴环，整段挤在左边，右侧空出一大片。
             HStack(alignment: .center, spacing: Space.gap) {
@@ -311,7 +311,7 @@ struct DashboardView: View {
                     }
                 }
                 .frame(width: 84, height: 84)
-                .frame(maxWidth: .infinity)   // 左半区居中：与右半区的续航镜像
+                .frame(maxWidth: .infinity, alignment: .leading)   // 贴左边缘：与第一排车型、第二排车牌同一条线
 
                 // 右半：续航结论（标签在上、数字居中、补充说明在下，与左侧圆环镜像）
                 VStack(spacing: 2) {
@@ -335,11 +335,11 @@ struct DashboardView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)   // 右半区居中
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)   // 贴右边缘：与车身色、更新时间同一条线
             }
 
-            // ④ 底行：总里程在左半区居中、VIN 在右半区居中
+            // ④ 底行：总里程贴左边缘、VIN 贴右边缘，与③同两条竖线
             HStack(alignment: .firstTextBaseline, spacing: Space.gap) {
                 HStack(spacing: 5) {
                     Image(systemName: "road.lanes").font(.system(size: 10))
@@ -350,7 +350,7 @@ struct DashboardView: View {
                 .foregroundColor(palette.sub)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity)   // 左半区居中
+                .frame(maxWidth: .infinity, alignment: .leading)   // 贴左边缘，与电量环同一条线
 
                 HStack(spacing: 5) {
                     Image(systemName: "number").font(.system(size: 10))
@@ -360,7 +360,7 @@ struct DashboardView: View {
                 .foregroundColor(palette.sub)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity)   // 右半区居中，与左侧总里程镜像
+                .frame(maxWidth: .infinity, alignment: .trailing)   // 贴右边缘，与续航同一条线
             }
         }
         // 横向留白比其它卡多 4pt：主卡内容贴到卡片边缘会显得局促，
