@@ -93,9 +93,29 @@ struct AppConfig: Codable, Equatable {
     /// 手动校准偏移（度）：在地图上点出车辆实际位置后，补偿接口上报偏差；车挪位后可清除
     var latOff: Double = 0
     var lngOff: Double = 0
-    /// 手动填写的 CLTC 标称续航（km）：用于车况页“续航达成率”计算；
-    /// 留空/0 时自动回退到接口上报的 battery_pack_range
+    /// 手动填写的 CLTC 标称续航（km）：用于车况页“续航达成率”计算。
+    /// 注意：**不要**再从接口的 `battery_pack_range` 猜——那是「当前可跑里程」，
+    /// 抓包实测 75.7% 电量时该字段为 290（换算满电约 383 km），与 CLTC 437 不是一回事。
     var cltcNominal: Int? = nil
+    /// 电池包容量（kWh）：用于把 SOC 换算成「剩余电量 kWh」。MG4 常见 42.8 / 51 / 64。
+    /// 必须保持 Optional：老配置 JSON 里没有这个键。
+    var packKWh: Double? = nil
+
+    /// 车型预设（点一下同时填容量与 CLTC），数值来自官方参数
+    struct PackPreset: Identifiable {
+        let id: String
+        let label: String
+        let kwh: Double
+        let cltc: Int
+    }
+    static let packPresets: [PackPreset] = [
+        PackPreset(id: "mg4-42", label: "MG4 42.8 kWh · CLTC 437", kwh: 42.8, cltc: 437),
+        PackPreset(id: "mg4-51", label: "MG4 51 kWh · CLTC 425", kwh: 51, cltc: 425),
+        PackPreset(id: "mg4-64", label: "MG4 64 kWh · CLTC 520", kwh: 64, cltc: 520)
+    ]
+    /// 兜底值：未填容量/CLTC 时按最常见的 42.8 kWh 版本算，避免达成率显示 "--"
+    static let defaultPackKWh: Double = 42.8
+    static let defaultCLTC: Int = 437
     /// 高德「Web 服务」Key：填写后用车况坐标做逆地理编码（坐标 → 中文地址）；
     /// 留空则完全不请求第三方，位置只显示「已定位」与坐标本身，坐标不外发。
     /// 必须保持 Optional：老配置 JSON 里没有这个键，非可选属性会让整个 config

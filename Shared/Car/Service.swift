@@ -152,9 +152,10 @@ struct MG4Service {
         // 继续尝试下一个候选字段，避免聚合接口某状态下发 0 时界面误显示 “0 km”。
         let rangeRaw = VehicleParse.firstUsable(vehicle["clstr_elec_rng_to_eptv"],
                                                 vehicle["battery_pack_range"])
-        // CLTC 满电标称续航：多数聚合接口用 battery_pack_range 表示满电参考里程
-        let cltc: Int? = VehicleParse.number(vehicle["battery_pack_range"])
-            .flatMap { $0 >= 50 ? Int($0.rounded()) : nil }
+        // CLTC 标称续航：接口里没有这个值。battery_pack_range 是「当前可跑里程」
+        // （抓包实测：SOC 75.7% 时 290 km → 满电约 383 km，而 CLTC 是 437），
+        // 用它当标称会让达成率变成 1/SOC。所以这里一律留空，由设置里的 CLTC 决定。
+        let cltc: Int? = nil
         let odometer: Int? = {
             guard let n = VehicleParse.number(vehicle["odometer"]), n > 0 else { return nil }
             return Int(n)

@@ -90,10 +90,36 @@ struct CarSettingsView: View {
                 ))
                 .keyboardType(.numberPad)
                 .focused($cltcFocused)
+                TextField("电池容量（kWh）", text: Binding(
+                    get: { cfg.packKWh.map { String(format: "%g", $0) } ?? "" },
+                    set: { cfg.packKWh = Double($0.trimmingCharacters(in: .whitespaces)) }
+                ))
+                .keyboardType(.decimalPad)
+                // 一键套用官方参数，省得手敲；点完 CLTC 与容量一起填好
+                HStack(spacing: 8) {
+                    ForEach(AppConfig.packPresets) { preset in
+                        Button {
+                            cfg.packKWh = preset.kwh
+                            cfg.cltcNominal = preset.cltc
+                        } label: {
+                            Text(preset.label.replacingOccurrences(of: "MG4 ", with: ""))
+                                .font(.caption2)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .frame(maxWidth: .infinity)
+                                .background(Capsule().fill(Color.brand.opacity(0.12)))
+                                .foregroundColor(.brand)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 2)
             } header: {
                 Text("车辆信息")
             } footer: {
-                Text("CLTC 标称续航用于计算车况页的「续航达成率」（按当前能耗折算的满电续航 ÷ 标称）。留空则自动采用接口上报的 battery_pack_range；若与你的车型官方标称不符，可手动填写覆盖。")
+                Text("CLTC 标称续航用于计算车况页的「续航达成率」；电池容量用于把电量百分比换算成「剩余电量 kWh」。两者都可一键套用上方预设。注意：接口返回的 battery_pack_range 是当前可跑里程，不是 CLTC 标称，已不再拿它兜底。")
             }
 
             Section("外观") {

@@ -221,7 +221,8 @@ struct DashboardView: View {
         // CLTC 标称续航：设置里手动填写优先，其次接口上报的 battery_pack_range
         let cltcNominal: Int? = {
             if let m = model.config.cltcNominal, m > 0 { return m }
-            return snap.cltcRange
+            if let r = snap.cltcRange, r > 0 { return r }
+            return AppConfig.defaultCLTC
         }()
 
 
@@ -436,10 +437,12 @@ struct DashboardView: View {
             return r / Double(b) * 100.0
         }()
 
-        // CLTC 标称续航：设置里手动填写优先，其次接口上报的 battery_pack_range
+        // CLTC 标称：设置里填的优先；接口不提供（battery_pack_range 是当前可跑里程），
+        // 最后兜底 437 km —— 即 42.8 kWh 版本 MG4 的官方 CLTC。
         let cltcNominal: Int? = {
             if let m = model.config.cltcNominal, m > 0 { return m }
-            return snap.cltcRange
+            if let r = snap.cltcRange, r > 0 { return r }
+            return AppConfig.defaultCLTC
         }()
         // 续航达成率（%）= 满电动态续航 ÷ CLTC 标称
         let cltcAchieve: String = {
@@ -447,14 +450,25 @@ struct DashboardView: View {
             return String(format: "%.1f%%", d / Double(n) * 100.0)
         }()
         let fullDynamic: String = fullDynamicKM.map { "\(Int($0.rounded())) km" } ?? "--"
-        // 续航与总里程已在主卡；这里放「动态续航」与它的达成率，两格挨着才好对读
+        // 剩余电量（kWh）= 电量百分比 × 电池容量；容量没填时按 42.8 kWh 兜底
+        let packKWh: Double = {
+            if let k = model.config.packKWh, k > 0 { return k }
+            return AppConfig.defaultPackKWh
+        }()
+        let remainingKWh: String = {
+            guard let b = snap.battery else { return "--" }
+            let kwh = Double(b) / 100.0 * packKWh
+            return String(format: "%.1f kWh", kwh)
+        }()
+        // 续航与总里程已在主卡；这里放「剩余电量 / 车内温度 / 动态续航 / 达成率」，
+        // 小电瓶电压属于诊断项，挪到「安全状态」卡底部。
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+            statCell(icon: "battery.75percent", iconColor: Color.dsOK,
+                     value: remainingKWh,
+                     label: "剩余电量")
             statCell(icon: "thermometer.medium", iconColor: Color.dsDanger,
                      value: (snap.interiorTemp.map { $0 == "--" ? "--" : $0 } ?? "--") + " °C",
                      label: "车内温度")
-            statCell(icon: "bolt.batteryblock.fill", iconColor: Color.dsOK,
-                     value: "\(VehicleFormat.voltageText(snap.voltage)) V",
-                     label: "小电瓶电压")
             statCell(icon: "battery.100", iconColor: Color.dsOK,
                      value: fullDynamic,
                      label: "动态续航")
@@ -573,6 +587,17 @@ struct DashboardView: View {
                     }
                 }
             }
+
+            // 小电瓶电压属于诊断项，放卡底一行小字，不占四宫格
+            HStack(spacing: 5) {
+                Image(systemName: "bolt.batteryblock.fill")
+                    .font(.system(size: 10))
+                Text("小电瓶 \(VehicleFormat.voltageText(snap.voltage)) V")
+                    .font(.system(size: 11))
+                    .monospacedDigit()
+            }
+            .foregroundColor(palette.sub)
+            .padding(.top, 12)
         }
         .padding(Space.card)
         .frame(maxWidth: .infinity, alignment: .leading)
