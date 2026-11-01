@@ -333,7 +333,7 @@ struct MediumLayout: View {
                 Image(systemName: "clock")
                     .font(.system(size: 8))
                     .foregroundColor(snap.isFresh ? palette.green : palette.sub)
-                Text("更新于 " + VehicleFormat.timeText(snap.fetchTime))
+                Text("更新于 " + VehicleFormat.timeText(snap.vehicleTime ?? snap.fetchTime))
                     .font(.system(size: 9))
                     .foregroundColor(snap.isFresh ? palette.green : palette.sub)
             }
@@ -601,7 +601,7 @@ struct LargeLayout: View {
             Image(systemName: snap.isFresh ? "checkmark.circle.fill" : "clock")
                 .font(.system(size: 10))
                 .foregroundColor(snap.isFresh ? palette.green : palette.orange)
-            Text("更新于 " + VehicleFormat.timeText(snap.fetchTime))
+            Text("更新于 " + VehicleFormat.timeText(snap.vehicleTime ?? snap.fetchTime))
                 .font(.system(size: 10))
                 .foregroundColor(snap.isFresh ? palette.green : palette.orange)
                 .lineLimit(1)

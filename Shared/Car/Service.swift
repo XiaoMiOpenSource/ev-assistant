@@ -70,7 +70,22 @@ struct MG4Service {
         return snapshot
     }
 
+    /// 抓取一次；1.2 被网关拒时自动降级到同族的 1.1（实测两者字段一致）
     func fetch(from url: URL) async throws -> VehicleSnapshot {
+        do {
+            return try await fetchOnce(url)
+        } catch let e as ServiceError {
+            if url.absoluteString.contains("/vp/1.2/"),
+               let alt = URL(string: url.absoluteString.replacingOccurrences(of: "/vp/1.2/", with: "/vp/1.1/")) {
+                if case .badPayload = e {
+                    return try await fetchOnce(alt)
+                }
+            }
+            throw e
+        }
+    }
+
+    private func fetchOnce(_ url: URL) async throws -> VehicleSnapshot {
         var request = URLRequest(url: url)
         request.timeoutInterval = 15
 
@@ -104,6 +119,8 @@ struct MG4Service {
             throw ServiceError.network(error.localizedDescription)
         }
 
+        // 诊断页要看得到「上一次接口到底回了什么」，只保留最近一次、截断到 60 KB
+        SharedStore.saveLastRaw(String(data: data, encoding: .utf8) ?? "")
         return try await decodeSnapshot(from: data)
     }
 
@@ -111,6 +128,21 @@ struct MG4Service {
     private func decodeSnapshot(from data: Data) async throws -> VehicleSnapshot {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw ServiceError.badPayload("返回内容不是 JSON，可能抓到的是登录页或错误页")
+        }
+
+        // 网关的错误体长这样：{"req_id":…,"err_resp":{"msg":"后台出错，休息一下","code":"14752","desc":"用户无操作权限"}}
+        // 以前只找顶层 message/code，会把「token 失效」误报成「缺少 data 字段」。
+        if let err = json["err_resp"] as? [String: Any] {
+            let code = (err["code"] as? String)
+                ?? (err["code"] as? Int).map(String.init)
+                ?? ""
+            let desc = (err["desc"] as? String) ?? ""
+            let msg = (err["msg"] as? String) ?? ""
+            let detail = desc.isEmpty ? msg : desc
+            if code == "14752" || desc.contains("权限") || msg.contains("权限") {
+                throw ServiceError.auth("接口拒绝了这次请求：\(detail)（\(code)）。通常是 token 过期，或抓包里的 VIN 与账号不一致——请重新抓一次 getVehicleStatus 并把完整 URL 粘贴到「车况数据源」。")
+            }
+            throw ServiceError.badPayload("接口返回错误 \(code)：\(detail.isEmpty ? "未知原因" : detail)")
         }
 
         if let body = json["data"] as? [String: Any] {
@@ -158,7 +190,8 @@ struct MG4Service {
         let cltc: Int? = nil
         let odometer: Int? = {
             guard let n = VehicleParse.number(vehicle["odometer"]), n > 0 else { return nil }
-            return Int(n)
+            // 部分车型以 0.1 km 上报（2381 表示 238.1 km）；由设置里的开关决定
+            return config.odometerInDecikm ? Int((n / 10).rounded()) : Int(n)
         }()
 
         // --- 门锁 / 充电 / 门窗（状态为 true 即“打开/未关”，与原脚本一致）---
@@ -178,7 +211,8 @@ struct MG4Service {
         let allClosed = openParts.isEmpty
 
         // --- 温度 / 小电瓶电压 / 胎压 ---
-        let temp = VehicleParse.string(vehicle["interior_temperature"])
+        // 0 表示「未采集」，不是真的 0 ℃
+        let temp = VehicleParse.string(vehicle["interior_temperature"]).flatMap { $0 == "0" ? nil : $0 }
         let voltage = VehicleParse.number(vehicle["vehicle_battery"]).map { $0 / 100.0 }
         var tyres: [String: Double]? = nil
         let tyreKeys: [(String, String)] = [
@@ -242,6 +276,43 @@ struct MG4Service {
             addrLng = nil
         }
 
+        // --- 车端时间 / 位置时间（毫秒时间戳）---
+        let posDict = body["vehicle_position"] as? [String: Any] ?? [:]
+        let secDict = body["vehicle_security"] as? [String: Any] ?? [:]
+        func msDate(_ any: Any?) -> Date? {
+            guard let n = VehicleParse.number(any), n > 1_000_000_000 else { return nil }
+            return Date(timeIntervalSince1970: n > 1_000_000_000_000 ? n / 1000.0 : n)
+        }
+        let vehicleTime = msDate(body["update_time"])
+        let positionTime = msDate(posDict["update_time"])
+
+        // --- 车外温度 / PM2.5（0 = 未采集）---
+        let exteriorTemp = VehicleParse.string(vehicle["exterior_temperature"]).flatMap { $0 == "0" ? nil : $0 }
+        let pm25In = VehicleParse.number(vehicle["interior_pm25"]).flatMap { $0 > 0 ? Int($0) : nil }
+        let pm25Out = VehicleParse.number(vehicle["exterior_pm25"]).flatMap { $0 > 0 ? Int($0) : nil }
+
+        // --- 充电状态细分 ---
+        // 抓包实测：未充电时 charge_status = 1009；其余码值需要用户在「已插枪未充 / 充电中 / 已充满」
+        // 三个时刻各抓一次才能补齐映射，未识别的码先原样显示在诊断页。
+        let chargeCode = VehicleParse.number(vehicle["charge_status"]).map { Int($0) }
+        let chargeStatusText: String? = {
+            if charging == true { return "充电中" }
+            guard let code = chargeCode else { return charging == false ? "未充电" : nil }
+            return code == 1009 ? "未充电" : "状态码 \(code)"
+        }()
+        // chrgng_rmnng_time：1023（10 位全 1）是「无效」哨兵，别显示成 1023 分钟
+        let chargeRemaining: Int? = VehicleParse.number(vehicle["chrgng_rmnng_time"]).flatMap { v in
+            let m = Int(v)
+            return m > 0 && m < 1023 ? m : nil
+        }
+
+        // --- 定位质量 / 位置授权 ---
+        let satellites = VehicleParse.number(posDict["satellites"]).map { Int($0) }
+        let hdop = VehicleParse.number(posDict["hdop"]).map { Int($0) }
+        let gpsStatus = VehicleParse.number(posDict["gps_status"]).map { Int($0) }
+        let altitude = VehicleParse.number(posDict["altitude"]).map { Int($0) }
+        let positionAuthorized = VehicleParse.bool(secDict["position_authorization_status"])
+
         return VehicleSnapshot(battery: battery,
                                range: rangeRaw,
                                odometer: odometer,
@@ -256,7 +327,20 @@ struct MG4Service {
                                lat: lat, lng: lng,
                                address: address,
                                addrLat: addrLat, addrLng: addrLng,
-                               fetchTime: Date())
+                               fetchTime: Date(),
+                               vehicleTime: vehicleTime,
+                               positionTime: positionTime,
+                               exteriorTemp: exteriorTemp,
+                               chargeStatusCode: chargeCode,
+                               chargeStatusText: chargeStatusText,
+                               chargeRemainingMinutes: chargeRemaining,
+                               satellites: satellites,
+                               hdop: hdop,
+                               gpsStatus: gpsStatus,
+                               altitude: altitude,
+                               pm25Interior: pm25In,
+                               pm25Exterior: pm25Out,
+                               positionAuthorized: positionAuthorized)
     }
 
 }

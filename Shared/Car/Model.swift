@@ -39,8 +39,31 @@ struct VehicleSnapshot: Codable, Equatable {
     /// 该地址文本对应的真实坐标（用于“近距离复用地址”判定，防止地址粘滞滞后）
     var addrLat: Double?
     var addrLng: Double?
-    /// 抓取时间
+    /// 抓取时间（本机拿到响应的时刻）
     var fetchTime: Date?
+    /// 车端数据时间（接口 `data.update_time`）。车机可能几分钟前才上报，
+    /// 界面的「更新于」应以此为准；fetchTime 只代表「本机什么时候拉的」。
+    var vehicleTime: Date? = nil
+    /// 位置数据时间（接口 `vehicle_position.update_time`）：GPS 常比整车状态更旧
+    var positionTime: Date? = nil
+    /// 车外温度（°C 字符串）
+    var exteriorTemp: String? = nil
+    /// 充电状态原始码（`vehicle_value.charge_status`），仅在诊断页展示
+    var chargeStatusCode: Int? = nil
+    /// 充电状态文案（未充电 / 已插枪 / 充电中 / 已充满）
+    var chargeStatusText: String? = nil
+    /// 充电剩余分钟（`chrgng_rmnng_time`；1023 是「无效」哨兵，已过滤）
+    var chargeRemainingMinutes: Int? = nil
+    /// 定位质量：卫星数 / 水平精度因子 / GPS 状态码 / 海拔（米）
+    var satellites: Int? = nil
+    var hdop: Int? = nil
+    var gpsStatus: Int? = nil
+    var altitude: Int? = nil
+    /// 车内 / 车外 PM2.5（接口用 0 表示未采集）
+    var pm25Interior: Int? = nil
+    var pm25Exterior: Int? = nil
+    /// 车机是否允许上报位置（false = 车机隐私设置关闭，接口不会给坐标）
+    var positionAuthorized: Bool? = nil
 
     static func demo() -> VehicleSnapshot {
         VehicleSnapshot(battery: 68,
@@ -59,10 +82,16 @@ struct VehicleSnapshot: Codable, Equatable {
                         fetchTime: Date())
     }
 
-    /// 数据是否“新鲜”（15 分钟内）
+    /// 数据是否“新鲜”（15 分钟内）——按车端时间算，没有车端时间才退回抓取时间
     var isFresh: Bool {
-        guard let fetchTime else { return false }
-        return Date().timeIntervalSince(fetchTime) < 15 * 60
+        guard let t = vehicleTime ?? fetchTime else { return false }
+        return Date().timeIntervalSince(t) < 15 * 60
+    }
+
+    /// 位置数据是否已经明显滞后（超过 30 分钟）：用于在位置卡上给出提示
+    var positionIsStale: Bool {
+        guard let t = positionTime else { return false }
+        return Date().timeIntervalSince(t) > 30 * 60
     }
 
     /// 是否处于“需要充电”状态：电量 ≤ 阈值 且 不在充电（App 横幅 / 小组件标识 / 通知共用的判定）
@@ -100,6 +129,9 @@ struct AppConfig: Codable, Equatable {
     /// 电池包容量（kWh）：用于把 SOC 换算成「剩余电量 kWh」。MG4 常见 42.8 / 51 / 64。
     /// 必须保持 Optional：老配置 JSON 里没有这个键。
     var packKWh: Double? = nil
+    /// 里程单位开关：接口若以 0.1 km 上报（2381 表示 238.1 km），打开后除以 10。
+    /// 抓包实测 MG4 上报 2381，需与车机仪表核对；默认按 km 直接显示。
+    var odometerInDecikm: Bool = false
 
     /// 车型预设（点一下同时填容量与 CLTC），数值来自官方参数
     struct PackPreset: Identifiable {

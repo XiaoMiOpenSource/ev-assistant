@@ -70,6 +70,19 @@ enum SharedStore {
         defaults?.synchronize()
     }
 
+    // ---------- 最近一次原始响应（诊断页用）----------
+
+    static let lastRawKey = "mg4.lastRaw"
+
+    /// 只保留最近一次、截断到 60 KB：够看清结构，也不会把 App Group 撑大
+    static func saveLastRaw(_ text: String) {
+        defaults?.set(String(text.prefix(60_000)), forKey: lastRawKey)
+    }
+
+    static func loadLastRaw() -> String? {
+        defaults?.string(forKey: lastRawKey)
+    }
+
     // ---------- 车辆图片缓存 ----------
 
     /// 车辆效果图缓存文件名（按颜色区分；回归 1.0.8 方案：直接存原图、不做后处理）

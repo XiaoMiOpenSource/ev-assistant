@@ -7,6 +7,8 @@ struct CarSettingsView: View {
     @State private var cfg = SharedStore.loadConfig()
     @State private var showPreview = false
     @State private var refreshState: String?
+    @State private var captureText = ""
+    @State private var captureHint: String?
     @FocusState private var cltcFocused: Bool
     @FocusState private var amapFocused: Bool
 
@@ -28,6 +30,28 @@ struct CarSettingsView: View {
     private var formContent: some View {
         Form {
             Section {
+                // 从抓包里一键填入：粘贴整条 getVehicleStatus 请求 URL，
+                // 自动取 appId / VIN / token，并把 data 里的 timestamp 换成当前时间
+                VStack(alignment: .leading, spacing: 6) {
+                    TextField("粘贴抓包里的完整请求 URL", text: $captureText, axis: .vertical)
+                        .lineLimit(2...4)
+                        .font(.caption.monospaced())
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    HStack(spacing: 10) {
+                        Button("解析并填入") { applyCapture(captureText) }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(captureText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if let captureHint {
+                            Text(captureHint)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+
                 HStack(spacing: 8) {
                     TextField("API 地址（车辆数据聚合接口）", text: $cfg.apiURL)
                         .keyboardType(.URL)
@@ -116,6 +140,13 @@ struct CarSettingsView: View {
                     }
                 }
                 .padding(.vertical, 2)
+                Toggle("里程单位为 0.1 km（数值 ÷10）", isOn: $cfg.odometerInDecikm)
+                NavigationLink {
+                    DiagnosticsView()
+                } label: {
+                    Label("诊断信息（原始响应 / 定位质量 / 充电状态码）", systemImage: "stethoscope")
+                        .font(.footnote)
+                }
             } header: {
                 Text("车辆信息")
             } footer: {
@@ -237,6 +268,37 @@ struct CarSettingsView: View {
         await model.refresh()
         refreshState = model.errorMessage == nil ? "刷新成功 ✓" : nil
     }
+    /// 解析粘贴的抓包 URL：取出 data 里的 appId / vin / token，
+    /// 把 timestamp 换成当前毫秒时间戳后回写到 apiURL（时间戳服务端不校验，但换新更稳）。
+    private func applyCapture(_ raw: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              var comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let dataValue = comps.queryItems?.first(where: { $0.name == "data" })?.value,
+              let jsonData = dataValue.data(using: .utf8),
+              let obj = (try? JSONSerialization.jsonObject(with: jsonData)) as? [String: Any] else {
+            captureHint = "没解析出 data 参数，请确认粘贴的是完整请求 URL（含 ?data=…）"
+            return
+        }
+        var payload = obj
+        payload["timestamp"] = String(Int(Date().timeIntervalSince1970 * 1000))
+        guard let encoded = try? JSONSerialization.data(withJSONObject: payload),
+              let text = String(data: encoded, encoding: .utf8) else {
+            captureHint = "重组 data 失败，请检查抓包内容是否被截断"
+            return
+        }
+        comps.queryItems = [URLQueryItem(name: "data", value: text)]
+        guard let finalURL = comps.url?.absoluteString else {
+            captureHint = "生成接口地址失败"
+            return
+        }
+        cfg.apiURL = finalURL
+        let vin = (payload["vin"] as? String) ?? ""
+        if !vin.isEmpty { cfg.carVin = vin }
+        let appId = (payload["appId"] as? String) ?? "?"
+        let tokenOK = ((payload["token"] as? String) ?? "").isEmpty == false
+        captureHint = "已填入：appId \(appId)、VIN \(vin.isEmpty ? "?" : vin)；token \(tokenOK ? "已读取" : "缺失")，时间戳已更新"
+    }
 }
 
 /// 小组件三尺寸预览（数据来自共享存储，与桌面小组件一致）
@@ -316,5 +378,83 @@ struct WidgetPreviewSheet: View {
                 )
                 .frame(maxWidth: .infinity)
         }
+    }
+}
+
+/// 诊断信息页：把「车端时间 / 定位质量 / 充电状态码 / 最近一次原始响应」摊开，
+/// 出问题时截图即可定位，不用再让用户翻抓包。
+struct DiagnosticsView: View {
+    @EnvironmentObject private var model: CarModel
+    @State private var raw: String?
+
+    private var snap: VehicleSnapshot? { model.snapshot }
+
+    private var pmText: String {
+        let parts = [snap?.pm25Interior, snap?.pm25Exterior].compactMap { $0 }.map(String.init)
+        return parts.isEmpty ? "—" : parts.joined(separator: " / ")
+    }
+
+    var body: some View {
+        Form {
+            Section("时间") {
+                row("车端数据时间", snap?.vehicleTime.map(Self.fmt) ?? "—")
+                row("本机抓取时间", snap?.fetchTime.map(Self.fmt) ?? "—")
+                row("位置数据时间", snap?.positionTime.map(Self.fmt) ?? "—")
+                row("位置是否滞后", snap?.positionIsStale == true ? "是（超过 30 分钟）" : "否")
+            }
+            Section("定位质量") {
+                row("卫星数", snap?.satellites.map(String.init) ?? "—")
+                row("hdop", snap?.hdop.map(String.init) ?? "—")
+                row("gps_status", snap?.gpsStatus.map(String.init) ?? "—")
+                row("海拔（m）", snap?.altitude.map(String.init) ?? "—")
+                row("位置授权", snap?.positionAuthorized.map { $0 ? "允许" : "已关闭（车机隐私设置）" } ?? "—")
+            }
+            Section("充电 / 环境") {
+                row("充电状态", snap?.chargeStatusText ?? "—")
+                row("charge_status 码", snap?.chargeStatusCode.map(String.init) ?? "—")
+                row("充电剩余", snap?.chargeRemainingMinutes.map { "\($0) 分钟" } ?? "—")
+                row("车外温度", snap?.exteriorTemp.map { "\($0) ℃" } ?? "—")
+                row("PM2.5 内 / 外", pmText)
+            }
+            Section {
+                if let raw, !raw.isEmpty {
+                    ScrollView {
+                        Text(raw)
+                            .font(.system(size: 10, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                    .frame(maxHeight: 280)
+                } else {
+                    Text("还没有抓取过（或接口返回为空）")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+                Button("重新读取原始响应") { raw = SharedStore.loadLastRaw() }
+            } header: {
+                Text("最近一次原始响应")
+            } footer: {
+                Text("原始响应只保留最近一次、截断到 60 KB，存在 App Group 里，不会上传。")
+            }
+        }
+        .navigationTitle("诊断信息")
+        .onAppear { raw = SharedStore.loadLastRaw() }
+    }
+
+    private func row(_ key: String, _ value: String) -> some View {
+        HStack {
+            Text(key)
+            Spacer(minLength: 8)
+            Text(value)
+                .foregroundColor(.secondary)
+                .monospacedDigit()
+                .multilineTextAlignment(.trailing)
+        }
+    }
+
+    private static func fmt(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.dateFormat = "MM-dd HH:mm:ss"
+        return f.string(from: d)
     }
 }

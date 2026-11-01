@@ -261,12 +261,22 @@ struct DashboardView: View {
                     if charging {
                         HStack(spacing: 3) {
                             Image(systemName: "bolt.fill").font(.system(size: 9, weight: .bold))
-                            Text("充电中").font(.system(size: 11, weight: .semibold))
+                            Text(snap.chargeStatusText ?? "充电中").font(.system(size: 11, weight: .semibold))
                         }
                         .foregroundColor(palette.orange)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Capsule().fill(palette.orange.opacity(0.14)))
+                    } else if let status = snap.chargeStatusText, status != "未充电" {
+                        // charge_status 不是「未充电」码（1009）说明枪已插上，单独标出来
+                        HStack(spacing: 3) {
+                            Image(systemName: "bolt.slash.fill").font(.system(size: 9, weight: .bold))
+                            Text(status).font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundColor(palette.sub)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.dsStroke.opacity(0.6)))
                     }
                     if !snap.isFresh {
                         HStack(spacing: 3) {
@@ -381,13 +391,26 @@ struct DashboardView: View {
 
     /// 数据新鲜度：车况接口每次刷新都会写 fetchTime
     private func freshnessText(_ snap: VehicleSnapshot) -> String {
-        guard let t = snap.fetchTime else { return "更新时间未知" }
-        let seconds = Date().timeIntervalSince(t)
+        // 用「车端数据时间」而不是本机抓取时间：车机可能几小时没上报，抓取时刻却永远是现在
+        guard let t = snap.vehicleTime ?? snap.fetchTime else { return "时间未知" }
+        return relativeText(t)
+    }
+
+    private func relativeText(_ d: Date) -> String {
+        let seconds = Date().timeIntervalSince(d)
         guard seconds.isFinite, seconds >= 0 else { return "刚刚更新" }
         if seconds < 60 { return "刚刚更新" }
         if seconds < 3600 { return "\(Int(seconds / 60)) 分钟前" }
         if seconds < 86_400 { return "\(Int(seconds / 3600)) 小时前" }
         return "\(Int(seconds / 86_400)) 天前"
+    }
+
+    /// 车内 / 车外温度合成一格（缺一项就只显示另一项）
+    private func tempText(_ snap: VehicleSnapshot) -> String {
+        var parts: [String] = []
+        if let t = snap.interiorTemp, t != "--" { parts.append("\(t)°") }
+        if let t = snap.exteriorTemp, !t.isEmpty { parts.append("\(t)°") }
+        return parts.isEmpty ? "--" : parts.joined(separator: " / ")
     }
     /// 车身颜色展示色点（与 AppConfig.colorNames 的 key 一一对应；白车靠外层浅描边区分底色）
     private var carColorDot: Color {
@@ -467,8 +490,8 @@ struct DashboardView: View {
                      value: remainingKWh,
                      label: "剩余电量")
             statCell(icon: "thermometer.medium", iconColor: Color.dsDanger,
-                     value: (snap.interiorTemp.map { $0 == "--" ? "--" : $0 } ?? "--") + " °C",
-                     label: "车内温度")
+                     value: tempText(snap),
+                     label: "车内 / 车外")
             statCell(icon: "battery.100", iconColor: Color.dsOK,
                      value: fullDynamic,
                      label: "动态续航")
@@ -689,8 +712,8 @@ struct DashboardView: View {
                 Image(systemName: snap.isFresh ? "checkmark.circle.fill" : "clock")
                     .font(.system(size: 13))
                     .foregroundColor(snap.isFresh ? Color.dsOK : palette.sub)
-                Text("更新于 " + VehicleFormat.timeText(snap.fetchTime)
-                     + (snap.isFresh ? "" : "（数据已超过 15 分钟）"))
+                Text("更新于 " + VehicleFormat.timeText(snap.vehicleTime ?? snap.fetchTime)
+                     + (snap.isFresh ? "" : "（车端数据已超过 15 分钟）"))
                     .font(.caption)
                     .foregroundColor(snap.isFresh ? Color.dsOK : palette.sub)
                 Spacer()
@@ -699,6 +722,37 @@ struct DashboardView: View {
                         .font(.system(size: 13))
                 }
                 .disabled(model.isLoading)
+            }
+
+            // 位置比整车状态旧时给出提示：GPS 常常比车身状态晚几小时上报
+            if let pt = snap.positionTime, snap.positionIsStale {
+                HStack(spacing: 5) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                    Text("位置数据 \(relativeText(pt))，可能不是当前位置")
+                        .font(.caption2)
+                }
+                .foregroundColor(Color.dsWarn)
+            }
+            if snap.positionAuthorized == false {
+                HStack(spacing: 5) {
+                    Image(systemName: "lock.slash.fill")
+                        .font(.system(size: 10))
+                    Text("车机隐私设置关闭了位置上报，这里拿不到坐标")
+                        .font(.caption2)
+                }
+                .foregroundColor(Color.dsWarn)
+            }
+            if let sats = snap.satellites {
+                HStack(spacing: 4) {
+                    Image(systemName: "location.north.circle")
+                        .font(.system(size: 9))
+                    Text("卫星 \(sats)"
+                         + (snap.hdop.map { " · hdop \($0)" } ?? "")
+                         + (snap.gpsStatus.map { " · gps \($0)" } ?? ""))
+                        .font(.system(size: 9.5))
+                }
+                .foregroundColor(palette.sub)
             }
 
             // 坐标调试行（方便与手机地图核对接口原始坐标是否准确）
