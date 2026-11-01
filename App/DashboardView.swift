@@ -367,7 +367,10 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)   // 与左栏总里程镜像
             }
         }
-        .padding(Space.card)
+        // 横向留白比其它卡多 4pt：主卡内容贴到卡片边缘会显得局促，
+        // 整卡一起内收（而不是只挪某一栏），行与行之间的对齐关系不受影响
+        .padding(.horizontal, Space.card + 4)
+        .padding(.vertical, Space.card)
         .frame(maxWidth: .infinity, alignment: .leading)
         .dsCard()
     }
