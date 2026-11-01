@@ -218,7 +218,18 @@ struct DashboardView: View {
         let battery = min(max(snap.battery ?? 0, 0), 100)
         let lowBattery = battery <= model.config.lowBatteryThreshold
         let rangeText = snap.range.map { $0 == "--" ? "--" : $0 } ?? "--"
-        // CLTC 标称续航：设置里手动填写优先，其次接口上报的 battery_pack_range
+        // 电池容量：设置里填的优先，未填按 42.8 kWh 兜底
+        let packKWh: Double = {
+            if let k = model.config.packKWh, k > 0 { return k }
+            return AppConfig.defaultPackKWh
+        }()
+        // 剩余电量（kWh）= 电量百分比 × 容量，显示在续航数字旁边
+        let remainingKWhText: String = {
+            guard let b = snap.battery else { return "--" }
+            return String(format: "%.1f kWh", Double(b) / 100.0 * packKWh)
+        }()
+        // CLTC 标称：设置里填的优先；接口不提供（battery_pack_range 是当前可跑里程），
+        // 最后兜底 437 km —— 即 42.8 kWh 版本 MG4 的官方 CLTC。
         let cltcNominal: Int? = {
             if let m = model.config.cltcNominal, m > 0 { return m }
             if let r = snap.cltcRange, r > 0 { return r }
@@ -347,11 +358,12 @@ struct DashboardView: View {
                             .font(.system(size: 15))
                             .foregroundColor(palette.sub)
                     }
-                    Text("CLTC \(cltcNominal.map { "\($0) km" } ?? "--")")
+                    // 剩余电量紧挨续航：电量百分比 × 电池容量，和 CLTC 标称同处次要信息行
+                    Text("剩余电量 \(remainingKWhText) · CLTC \(cltcNominal.map { "\($0) km" } ?? "--")")
                         .font(.system(size: 12))
                         .foregroundColor(palette.sub.opacity(0.85))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.7)
                 }
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)   // 右半区居中（文字也居中）
@@ -394,6 +406,15 @@ struct DashboardView: View {
         // 用「车端数据时间」而不是本机抓取时间：车机可能几小时没上报，抓取时刻却永远是现在
         guard let t = snap.vehicleTime ?? snap.fetchTime else { return "时间未知" }
         return relativeText(t)
+    }
+
+    /// 车端 / 位置数据时间：MM-dd HH:mm:ss，缺失显示「—」
+    private func dataTimeText(_ d: Date?) -> String {
+        guard let d else { return "—" }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.dateFormat = "MM-dd HH:mm:ss"
+        return f.string(from: d)
     }
 
     private func relativeText(_ d: Date) -> String {
@@ -473,22 +494,12 @@ struct DashboardView: View {
             return String(format: "%.1f%%", d / Double(n) * 100.0)
         }()
         let fullDynamic: String = fullDynamicKM.map { "\(Int($0.rounded())) km" } ?? "--"
-        // 剩余电量（kWh）= 电量百分比 × 电池容量；容量没填时按 42.8 kWh 兜底
-        let packKWh: Double = {
-            if let k = model.config.packKWh, k > 0 { return k }
-            return AppConfig.defaultPackKWh
-        }()
-        let remainingKWh: String = {
-            guard let b = snap.battery else { return "--" }
-            let kwh = Double(b) / 100.0 * packKWh
-            return String(format: "%.1f kWh", kwh)
-        }()
-        // 续航与总里程已在主卡；这里放「剩余电量 / 车内温度 / 动态续航 / 达成率」，
-        // 小电瓶电压属于诊断项，挪到「安全状态」卡底部。
+
+        // 续航、剩余电量都已在主卡；这里放「小电瓶电压 / 车内车外温度 / 动态续航 / 达成率」
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
-            statCell(icon: "battery.75percent", iconColor: Color.dsOK,
-                     value: remainingKWh,
-                     label: "剩余电量")
+            statCell(icon: "bolt.batteryblock.fill", iconColor: Color.dsOK,
+                     value: "\(VehicleFormat.voltageText(snap.voltage)) V",
+                     label: "小电瓶电压")
             statCell(icon: "thermometer.medium", iconColor: Color.dsDanger,
                      value: tempText(snap),
                      label: "车内 / 车外")
@@ -611,16 +622,7 @@ struct DashboardView: View {
                 }
             }
 
-            // 小电瓶电压属于诊断项，放卡底一行小字，不占四宫格
-            HStack(spacing: 5) {
-                Image(systemName: "bolt.batteryblock.fill")
-                    .font(.system(size: 10))
-                Text("小电瓶 \(VehicleFormat.voltageText(snap.voltage)) V")
-                    .font(.system(size: 11))
-                    .monospacedDigit()
-            }
-            .foregroundColor(palette.sub)
-            .padding(.top, 12)
+
         }
         .padding(Space.card)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -743,6 +745,19 @@ struct DashboardView: View {
                 }
                 .foregroundColor(Color.dsWarn)
             }
+            // 车端数据时间与位置数据时间分开显示：两者经常差好几个小时
+            HStack(spacing: 5) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 9))
+                Text("车端数据 " + dataTimeText(snap.vehicleTime)
+                     + " · 位置数据 " + dataTimeText(snap.positionTime))
+                    .font(.system(size: 9.5))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .foregroundColor(palette.sub)
+
             if let sats = snap.satellites {
                 HStack(spacing: 4) {
                     Image(systemName: "location.north.circle")
