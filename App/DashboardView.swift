@@ -206,9 +206,9 @@ struct DashboardView: View {
     ///
     /// 骨架（两条竖轴，不用横排数据行）：
     ///   左轴 = 电量环（与上方车型、车牌共用同一条左边线）
-    ///   右轴 = 续航大数字 + 「km 剩余续航」+「满电约 xxx km」，三行与环等高
+    ///   右轴 = 续航大数字 + 「剩余续航」+「CLTC xxx km」，三行与环等高
     ///   底行 = 总里程（左半居中）| VIN（右半居中），与上面两栏同轴
-    /// 数据一个都不少：车型、车名、车牌、车身色、续航、电量、满电动态续航、
+    /// 数据一个都不少：车型、车名、车牌、车身色、续航、电量、CLTC 标称、
     /// 总里程、VIN、充电状态、数据新鲜度都在卡内，只是分了三层字号。
     private func heroCard(_ snap: VehicleSnapshot) -> some View {
         let plate = model.config.carPlate
@@ -218,12 +218,12 @@ struct DashboardView: View {
         let battery = min(max(snap.battery ?? 0, 0), 100)
         let lowBattery = battery <= model.config.lowBatteryThreshold
         let rangeText = snap.range.map { $0 == "--" ? "--" : $0 } ?? "--"
-        // 满电状态动态续航（km）= 当前续航 ÷ 当前电量 × 100
-        let fullDynamic: String = {
-            guard let b = snap.battery, b > 0,
-                  let r = snap.range.flatMap(Double.init), r > 0 else { return "--" }
-            return "\(Int((r / Double(b) * 100.0).rounded())) km"
+        // CLTC 标称续航：设置里手动填写优先，其次接口上报的 battery_pack_range
+        let cltcNominal: Int? = {
+            if let m = model.config.cltcNominal, m > 0 { return m }
+            return snap.cltcRange
         }()
+
 
         return VStack(alignment: .leading, spacing: 14) {
             // ① 身份：车型/车名 + 车身色
@@ -311,7 +311,9 @@ struct DashboardView: View {
                     }
                 }
                 .frame(width: 84, height: 84)
-                .frame(maxWidth: .infinity)   // 在本半区居中
+                // 左栏不再在半区内居中，而是靠左对齐——
+                // 这样电量环的左边缘与第一排「车型」、第二排「车牌」共用同一条竖线
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 // 右半：续航结论（标签在上、数字居中、补充说明在下，与左侧圆环镜像）
                 VStack(spacing: 2) {
@@ -329,7 +331,7 @@ struct DashboardView: View {
                             .font(.system(size: 15))
                             .foregroundColor(palette.sub)
                     }
-                    Text("满电约 \(fullDynamic)")
+                    Text("CLTC \(cltcNominal.map { "\($0) km" } ?? "--")")
                         .font(.system(size: 12))
                         .foregroundColor(palette.sub.opacity(0.85))
                         .lineLimit(1)
@@ -338,7 +340,7 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity)   // 在本半区居中
             }
 
-            // ④ 底行：总里程在左半边居中、VIN 在右半边居中，与上方「环 | 续航」两栏同一条中轴
+            // ④ 底行：总里程靠左（与电量环同一条左边缘）、VIN 在右半区居中
             HStack(alignment: .firstTextBaseline, spacing: Space.gap) {
                 HStack(spacing: 5) {
                     Image(systemName: "road.lanes").font(.system(size: 10))
@@ -349,7 +351,7 @@ struct DashboardView: View {
                 .foregroundColor(palette.sub)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)   // 与上方左栏同一条左边缘
 
                 HStack(spacing: 5) {
                     Image(systemName: "number").font(.system(size: 10))
@@ -435,7 +437,8 @@ struct DashboardView: View {
             guard let d = fullDynamicKM, let n = cltcNominal, n > 0 else { return "--" }
             return String(format: "%.1f%%", d / Double(n) * 100.0)
         }()
-        // 续航、总里程、满电动态续航都已在主卡；这一格放「CLTC 标称」——它正是达成率的分母，放一起才好对读
+        let fullDynamic: String = fullDynamicKM.map { "\(Int($0.rounded())) km" } ?? "--"
+        // 续航与总里程已在主卡；这里放「动态续航」与它的达成率，两格挨着才好对读
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
             statCell(icon: "thermometer.medium", iconColor: Color.dsDanger,
                      value: (snap.interiorTemp.map { $0 == "--" ? "--" : $0 } ?? "--") + " °C",
@@ -443,9 +446,9 @@ struct DashboardView: View {
             statCell(icon: "bolt.batteryblock.fill", iconColor: Color.dsOK,
                      value: "\(VehicleFormat.voltageText(snap.voltage)) V",
                      label: "小电瓶电压")
-            statCell(icon: "gauge.medium", iconColor: palette.blue,
-                     value: cltcNominal.map { "\($0) km" } ?? "--",
-                     label: "CLTC 标称")
+            statCell(icon: "battery.100", iconColor: Color.dsOK,
+                     value: fullDynamic,
+                     label: "动态续航")
             statCell(icon: "target", iconColor: palette.blue,
                      value: cltcAchieve,
                      label: "折算达成率")
