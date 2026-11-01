@@ -285,7 +285,7 @@ struct DashboardView: View {
                 .minimumScaleFactor(0.8)
             }
 
-            // ③ 左右对称：左栏贴左边缘（环）、右栏贴右边缘（续航三段），中间一条留白。
+            // ③ 左右对称：左右各占一半，环在本半区居中、续航三段在本半区居中。
             //    环的圆心与「218」的字面中心落在同一条水平线上，左右视觉重量相等；
             //    原来环贴左、数字贴环，整段挤在左边，右侧空出一大片。
             HStack(alignment: .center, spacing: Space.gap) {
@@ -311,9 +311,7 @@ struct DashboardView: View {
                     }
                 }
                 .frame(width: 84, height: 84)
-                // 左栏不再在半区内居中，而是靠左对齐——
-                // 这样电量环的左边缘与第一排「车型」、第二排「车牌」共用同一条竖线
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity)   // 左半区居中：与右半区的续航镜像
 
                 // 右半：续航结论（标签在上、数字居中、补充说明在下，与左侧圆环镜像）
                 VStack(spacing: 2) {
@@ -337,13 +335,11 @@ struct DashboardView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .multilineTextAlignment(.trailing)
-                // 右栏贴右边缘：与左栏的电量环形成镜像，左右留白相等，
-                // 且「续航 / CLTC」的右端与第一排车身色、第二排更新时间落在同一条右边线上
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)   // 右半区居中
             }
 
-            // ④ 底行：总里程贴左边缘、VIN 贴右边缘，左右镜像
+            // ④ 底行：总里程在左半区居中、VIN 在右半区居中
             HStack(alignment: .firstTextBaseline, spacing: Space.gap) {
                 HStack(spacing: 5) {
                     Image(systemName: "road.lanes").font(.system(size: 10))
@@ -354,7 +350,7 @@ struct DashboardView: View {
                 .foregroundColor(palette.sub)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, alignment: .leading)   // 与上方左栏同一条左边缘
+                .frame(maxWidth: .infinity)   // 左半区居中
 
                 HStack(spacing: 5) {
                     Image(systemName: "number").font(.system(size: 10))
@@ -364,7 +360,7 @@ struct DashboardView: View {
                 .foregroundColor(palette.sub)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity, alignment: .trailing)   // 与左栏总里程镜像
+                .frame(maxWidth: .infinity)   // 右半区居中，与左侧总里程镜像
             }
         }
         // 横向留白比其它卡多 4pt：主卡内容贴到卡片边缘会显得局促，
