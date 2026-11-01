@@ -285,7 +285,7 @@ struct DashboardView: View {
                 .minimumScaleFactor(0.8)
             }
 
-            // ③ 左右对称：环占左半边、续航占右半边，两块各自在本半区居中。
+            // ③ 左右对称：左栏贴左边缘（环）、右栏贴右边缘（续航三段），中间一条留白。
             //    环的圆心与「218」的字面中心落在同一条水平线上，左右视觉重量相等；
             //    原来环贴左、数字贴环，整段挤在左边，右侧空出一大片。
             HStack(alignment: .center, spacing: Space.gap) {
@@ -337,10 +337,13 @@ struct DashboardView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .frame(maxWidth: .infinity)   // 在本半区居中
+                .multilineTextAlignment(.trailing)
+                // 右栏贴右边缘：与左栏的电量环形成镜像，左右留白相等，
+                // 且「续航 / CLTC」的右端与第一排车身色、第二排更新时间落在同一条右边线上
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
 
-            // ④ 底行：总里程靠左（与电量环同一条左边缘）、VIN 在右半区居中
+            // ④ 底行：总里程贴左边缘、VIN 贴右边缘，左右镜像
             HStack(alignment: .firstTextBaseline, spacing: Space.gap) {
                 HStack(spacing: 5) {
                     Image(systemName: "road.lanes").font(.system(size: 10))
@@ -361,7 +364,7 @@ struct DashboardView: View {
                 .foregroundColor(palette.sub)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .trailing)   // 与左栏总里程镜像
             }
         }
         .padding(Space.card)
