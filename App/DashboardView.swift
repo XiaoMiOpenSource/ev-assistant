@@ -233,7 +233,9 @@ struct DashboardView: View {
                     .foregroundColor(palette.text)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Spacer(minLength: 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)   // 左半区贴左
+
+                // 右半区居中：与下面三排的右栏共用同一条中线
                 HStack(spacing: 5) {
                     Circle()
                         .fill(carColorDot)
@@ -244,36 +246,40 @@ struct DashboardView: View {
                         .foregroundColor(palette.sub)
                         .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity)
             }
 
-            // ② 车牌 + 状态胶囊（充电中 / 数据过期），右端是数据更新时间
-            HStack(spacing: 8) {
-                Text(plate.isEmpty ? "--" : plate)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(palette.sub)
-                    .lineLimit(1)
-                if charging {
-                    HStack(spacing: 3) {
-                        Image(systemName: "bolt.fill").font(.system(size: 9, weight: .bold))
-                        Text("充电中").font(.system(size: 11, weight: .semibold))
+            // ② 车牌 + 状态胶囊（充电中 / 数据过期）贴左；数据新鲜度在右半区居中
+            HStack(spacing: Space.gap) {
+                HStack(spacing: 8) {
+                    Text(plate.isEmpty ? "--" : plate)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(palette.sub)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    if charging {
+                        HStack(spacing: 3) {
+                            Image(systemName: "bolt.fill").font(.system(size: 9, weight: .bold))
+                            Text("充电中").font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundColor(palette.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(palette.orange.opacity(0.14)))
                     }
-                    .foregroundColor(palette.orange)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(palette.orange.opacity(0.14)))
-                }
-                if !snap.isFresh {
-                    HStack(spacing: 3) {
-                        Image(systemName: "clock.badge.exclamationmark").font(.system(size: 9, weight: .bold))
-                        Text("数据过期").font(.system(size: 11, weight: .semibold))
+                    if !snap.isFresh {
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock.badge.exclamationmark").font(.system(size: 9, weight: .bold))
+                            Text("数据过期").font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundColor(Color.dsWarn)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.dsWarn.opacity(0.14)))
                     }
-                    .foregroundColor(Color.dsWarn)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.dsWarn.opacity(0.14)))
                 }
-                Spacer(minLength: 8)
-                // 数据新鲜度：属于整卡元信息，跟在车牌这一行右端
+                .frame(maxWidth: .infinity, alignment: .leading)   // 左半区贴左
+
                 HStack(spacing: 4) {
                     Image(systemName: "clock")
                         .font(.system(size: 9))
@@ -283,6 +289,7 @@ struct DashboardView: View {
                 .foregroundColor(palette.sub.opacity(0.9))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity)   // 右半区居中
             }
 
             // ③ 左栏贴左边缘（与①②两排左线对齐），右栏在其半区内居中。
