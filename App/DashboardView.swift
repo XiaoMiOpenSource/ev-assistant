@@ -285,7 +285,7 @@ struct DashboardView: View {
                 .minimumScaleFactor(0.8)
             }
 
-            // ③ 四排共用两条竖线：左栏（环、总里程）贴左边缘，右栏（续航三段、VIN）贴右边缘。
+            // ③ 左栏贴左边缘（与①②两排左线对齐），右栏在其半区内居中。
             //    环的圆心与「218」的字面中心落在同一条水平线上，左右视觉重量相等；
             //    原来环贴左、数字贴环，整段挤在左边，右侧空出一大片。
             HStack(alignment: .center, spacing: Space.gap) {
@@ -335,11 +335,11 @@ struct DashboardView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .multilineTextAlignment(.trailing)
-                .frame(maxWidth: .infinity, alignment: .trailing)   // 贴右边缘：与车身色、更新时间同一条线
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)   // 右半区居中（文字也居中）
             }
 
-            // ④ 底行：总里程贴左边缘、VIN 贴右边缘，与③同两条竖线
+            // ④ 底行：总里程贴左边缘、VIN 在右半区居中，与③一致
             HStack(alignment: .firstTextBaseline, spacing: Space.gap) {
                 HStack(spacing: 5) {
                     Image(systemName: "road.lanes").font(.system(size: 10))
@@ -360,7 +360,7 @@ struct DashboardView: View {
                 .foregroundColor(palette.sub)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity, alignment: .trailing)   // 贴右边缘，与续航同一条线
+                .frame(maxWidth: .infinity)   // 右半区居中
             }
         }
         // 横向留白比其它卡多 4pt：主卡内容贴到卡片边缘会显得局促，
