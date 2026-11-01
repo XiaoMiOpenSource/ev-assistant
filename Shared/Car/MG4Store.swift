@@ -283,18 +283,33 @@ enum DriveStats {
         return hi - lo
     }
 
-    /// 最近一次「非充电」窗口的平均掉电速率（%/小时）；充电段会被跳过
-    static func idleDropPerHour(_ samples: [DriveSample], hours: Double = 6, now: Date = Date()) -> Double? {
+    /// 停车掉电（%/天 与 kWh/天）。
+    ///
+    /// 只统计「真停车」的采样：相邻两条采样的里程表读数不变才算停车，
+    /// 行驶中的掉电一律跳过（否则开车的消耗会被算成停车损耗）。
+    /// 窗口默认 24 小时，跨度不足 2 小时不给值（样本太短没有意义）。
+    static func parkedDropPerDay(_ samples: [DriveSample],
+                                 packKWh: Double,
+                                 hours: Double = 24,
+                                 now: Date = Date()) -> (percentPerDay: Double, kwhPerDay: Double)? {
         let since = now.addingTimeInterval(-hours * 3600)
-        let idle = samples.filter { !$0.charging && $0.t >= since }.compactMap { s -> (Date, Int)? in
-            guard let soc = s.soc else { return nil }
-            return (s.t, soc)
+        let recent = samples.filter { !$0.charging && $0.t >= since && $0.soc != nil }
+        guard recent.count >= 3 else { return nil }
+
+        // 相邻两条里程表相同 → 两条都算「停着」
+        var parked: [(Date, Int)] = []
+        for i in recent.indices {
+            let s = recent[i]
+            guard let soc = s.soc else { continue }
+            if i > 0, let a = recent[i - 1].odoKm, let b = s.odoKm, a != b { continue }
+            parked.append((s.t, soc))
         }
-        guard let first = idle.first, let last = idle.last, idle.count >= 2 else { return nil }
-        let span = last.0.timeIntervalSince(first.0) / 3600.0
-        guard span > 0.2 else { return nil }
-        let drop = Double(first.1 - last.1)
-        return drop / span
+        guard let first = parked.first, let last = parked.last else { return nil }
+        let days = last.0.timeIntervalSince(first.0) / 86_400.0
+        guard days > 2.0 / 24.0 else { return nil }   // 至少 2 小时
+        let percent = Double(first.1 - last.1) / days
+        guard percent > -20, percent < 60 else { return nil }   // 明显异常（如跨充电、跨校准）直接不给
+        return (percent, percent / 100.0 * max(packKWh, 0))
     }
 
     /// 最近一次已结束的充电会话

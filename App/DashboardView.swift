@@ -485,7 +485,7 @@ struct DashboardView: View {
         }()
         let samples = SharedStore.samples()
         let todayKm = DriveStats.todayDistance(samples)
-        let drop = DriveStats.idleDropPerHour(samples)
+        let parkedDrop = DriveStats.parkedDropPerDay(samples, packKWh: packKWh)
         let sessions = DriveStats.sessions(samples, packKWh: packKWh)
         let live = sessions.last
         let lastClosed = sessions.last { $0.isClosed }
@@ -496,8 +496,10 @@ struct DashboardView: View {
                 .foregroundColor(palette.text)
 
             HStack(spacing: Space.gap) {
-                autoMetric("今日行驶", todayKm.map { String(format: "%.1f km", $0) } ?? "--")
-                autoMetric("停车掉电", drop.map { String(format: "%.1f %%/h", $0) } ?? "--")
+                autoMetric("今日行驶", todayKm.map { String(format: "%.1f km", $0) } ?? "--", sub: "当天里程表差值")
+                autoMetric("停车掉电",
+                           parkedDrop.map { String(format: "%.1f %%/天", $0.percentPerDay) } ?? "--",
+                           sub: parkedDrop.map { String(format: "约 %.2f kWh/天", $0.kwhPerDay) } ?? "需停车 ≥2 小时")
             }
 
             if let live, !live.isClosed {
@@ -522,7 +524,7 @@ struct DashboardView: View {
         .dsCard()
     }
 
-    private func autoMetric(_ title: String, _ value: String) -> some View {
+    private func autoMetric(_ title: String, _ value: String, sub: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.system(size: 11))
@@ -533,6 +535,13 @@ struct DashboardView: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+            if let sub {
+                Text(sub)
+                    .font(.system(size: 10))
+                    .foregroundColor(palette.sub.opacity(0.9))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
         }
         .frame(maxWidth: .infinity)
     }
