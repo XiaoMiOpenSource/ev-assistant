@@ -484,11 +484,14 @@ struct DashboardView: View {
             return AppConfig.defaultPackKWh
         }()
         let samples = SharedStore.samples()
-        let todayKm = DriveStats.todayDistance(samples)
-        let parkedDrop = DriveStats.parkedDropPerDay(samples, packKWh: packKWh)
+        let today = DriveStats.todayDistance(samples)
+        let parked = DriveStats.parkedDropPerDay(samples, packKWh: packKWh)
         let sessions = DriveStats.sessions(samples, packKWh: packKWh)
         let live = sessions.last
         let lastClosed = sessions.last { $0.isClosed }
+        // 采样密度：让用户知道这两个数基于多少次刷新，少的时候自然不准
+        let daySamples = samples.filter { Calendar.current.isDate($0.t, inSameDayAs: Date()) }.count
+        let lastSampleText = samples.last.map { dataTimeText($0.t) } ?? "—"
 
         return VStack(alignment: .leading, spacing: 10) {
             Label("自动统计", systemImage: "chart.line.uptrend.xyaxis")
@@ -496,10 +499,23 @@ struct DashboardView: View {
                 .foregroundColor(palette.text)
 
             HStack(spacing: Space.gap) {
-                autoMetric("今日行驶", todayKm.map { String(format: "%.1f km", $0) } ?? "--", sub: "当天里程表差值")
+                autoMetric("今日行驶",
+                           today.map { String(format: "%.1f km", $0.km) } ?? "--",
+                           sub: {
+                               guard let t0 = today else { return "需至少 2 次刷新（今天 \(daySamples) 次）" }
+                               let hm = DateFormatter()
+                               hm.locale = Locale(identifier: "zh_CN")
+                               hm.dateFormat = "HH:mm"
+                               let base = Calendar.current.isDate(t0.from, inSameDayAs: Date())
+                                   ? "自 \(hm.string(from: t0.from)) 起" : "自 00:00 起"
+                               return base + " · \(t0.samples) 次采样"
+                           }())
                 autoMetric("停车掉电",
-                           parkedDrop.map { String(format: "%.1f %%/天", $0.percentPerDay) } ?? "--",
-                           sub: parkedDrop.map { String(format: "约 %.2f kWh/天", $0.kwhPerDay) } ?? "需停车 ≥2 小时")
+                           parked.map { String(format: "%.1f %%/天", $0.percentPerDay) } ?? "--",
+                           sub: {
+                               guard let p0 = parked else { return "需同一次停放 ≥6 小时" }
+                               return String(format: "停放 %.0f 小时 · 约 %.2f kWh/天", p0.hours, p0.kwhPerDay)
+                           }())
             }
 
             if let live, !live.isClosed {
@@ -518,6 +534,10 @@ struct DashboardView: View {
                     .font(.caption)
                     .foregroundColor(palette.sub)
             }
+
+            Text("采样 \(samples.count) 条 · 最近 \(lastSampleText)")
+                .font(.system(size: 9.5))
+                .foregroundColor(palette.sub.opacity(0.75))
         }
         .padding(Space.card)
         .frame(maxWidth: .infinity, alignment: .leading)

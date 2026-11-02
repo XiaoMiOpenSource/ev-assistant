@@ -41,6 +41,7 @@ enum AppTab: Hashable { case car, records, stats, settings }
 struct RootTabView: View {
     @EnvironmentObject private var store: Store
     @EnvironmentObject private var carModel: CarModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var didSelectInitialTab = false
 
     var body: some View {
@@ -50,6 +51,11 @@ struct RootTabView: View {
             } else {
                 tabs
             }
+        }
+        // 每次回到前台补一条采样：刷新是稀疏的，采样越稀「今日行驶 / 停车掉电」越不准
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active, let snap = carModel.snapshot else { return }
+            SharedStore.appendSample(DriveSample(snapshot: snap))
         }
     }
 
