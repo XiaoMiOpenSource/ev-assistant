@@ -198,7 +198,6 @@ struct DashboardView: View {
                 lowBatteryBanner(snap)   // 低电量充电提醒横幅
             }
             safetyCard(snap)     // 门锁 + 门窗：合成「安全状态」，一眼看完
-            autoStatsCard(snap)  // 今日行驶 / 停车掉电 / 最近一次充电（采样推导，无需输入）
             statGrid(snap)
             tyreCard(snap)
             locationCard(snap)
@@ -474,96 +473,6 @@ struct DashboardView: View {
             RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
                 .stroke(Color.dsDanger.opacity(0.35), lineWidth: 1)
         )
-    }
-
-    /// 自动统计卡：今日行驶 / 停车掉电 / 最近一次充电会话
-    /// 全部由采样推导（SharedStore.samples()），用户不需要输入任何东西
-    private func autoStatsCard(_ snap: VehicleSnapshot) -> some View {
-        let packKWh: Double = {
-            if let k = model.config.packKWh, k > 0 { return k }
-            return AppConfig.defaultPackKWh
-        }()
-        let samples = SharedStore.samples()
-        let today = DriveStats.todayDistance(samples)
-        let parked = DriveStats.parkedDropPerDay(samples, packKWh: packKWh)
-        let sessions = DriveStats.sessions(samples, packKWh: packKWh)
-        let live = sessions.last
-        let lastClosed = sessions.last { $0.isClosed }
-        // 采样密度：让用户知道这两个数基于多少次刷新，少的时候自然不准
-        let daySamples = samples.filter { Calendar.current.isDate($0.t, inSameDayAs: Date()) }.count
-        let lastSampleText = samples.last.map { dataTimeText($0.t) } ?? "—"
-
-        return VStack(alignment: .leading, spacing: 10) {
-            Label("自动统计", systemImage: "chart.line.uptrend.xyaxis")
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(palette.text)
-
-            HStack(spacing: Space.gap) {
-                autoMetric("今日行驶",
-                           today.map { String(format: "%.1f km", $0.km) } ?? "--",
-                           sub: {
-                               guard let t0 = today else { return "需至少 2 次刷新（今天 \(daySamples) 次）" }
-                               let hm = DateFormatter()
-                               hm.locale = Locale(identifier: "zh_CN")
-                               hm.dateFormat = "HH:mm"
-                               let base = Calendar.current.isDate(t0.from, inSameDayAs: Date())
-                                   ? "自 \(hm.string(from: t0.from)) 起" : "自 00:00 起"
-                               return base + " · \(t0.samples) 次采样"
-                           }())
-                autoMetric("停车掉电",
-                           parked.map { String(format: "%.1f %%/天", $0.percentPerDay) } ?? "--",
-                           sub: {
-                               guard let p0 = parked else { return "需同一次停放 ≥6 小时" }
-                               return String(format: "停放 %.0f 小时 · 约 %.2f kWh/天", p0.hours, p0.kwhPerDay)
-                           }())
-            }
-
-            if let live, !live.isClosed {
-                Text("正在充电：\(live.socStart)% → \(live.socEnd)%（\(Int(live.minutes)) 分钟）")
-                    .font(.caption)
-                    .foregroundColor(palette.orange)
-            } else if let lastClosed {
-                Text("最近充电 \(dataTimeText(lastClosed.end))：\(lastClosed.socStart)% → \(lastClosed.socEnd)% · "
-                     + String(format: "%.1f kWh", lastClosed.kwh))
-                    .font(.caption)
-                    .foregroundColor(palette.sub)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            } else {
-                Text("还没采到充电会话——多刷新几次就会自动记录")
-                    .font(.caption)
-                    .foregroundColor(palette.sub)
-            }
-
-            Text("采样 \(samples.count) 条 · 最近 \(lastSampleText)")
-                .font(.system(size: 9.5))
-                .foregroundColor(palette.sub.opacity(0.75))
-        }
-        .padding(Space.card)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .dsCard()
-    }
-
-    private func autoMetric(_ title: String, _ value: String, sub: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.system(size: 11))
-                .foregroundColor(palette.sub)
-            Text(value)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(palette.text)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            if let sub {
-                Text(sub)
-                    .font(.system(size: 10))
-                    .foregroundColor(palette.sub.opacity(0.9))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-        }
-        .frame(maxWidth: .infinity)
     }
 
     private func statGrid(_ snap: VehicleSnapshot) -> some View {
