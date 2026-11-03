@@ -46,6 +46,8 @@ struct VehicleSnapshot: Codable, Equatable {
     var vehicleTime: Date? = nil
     /// 位置数据时间（接口 `vehicle_position.update_time`）：GPS 常比整车状态更旧
     var positionTime: Date? = nil
+    /// 接口上报的里程表原始值（未做 0.1 km 换算），诊断页用来核对单位
+    var odometerRaw: Int? = nil
     /// 车外温度（°C 字符串）
     var exteriorTemp: String? = nil
     /// 充电状态原始码（`vehicle_value.charge_status`），仅在诊断页展示

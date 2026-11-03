@@ -190,6 +190,8 @@ struct MG4Service {
         // （抓包实测：SOC 75.7% 时 290 km → 满电约 383 km，而 CLTC 是 437），
         // 用它当标称会让达成率变成 1/SOC。所以这里一律留空，由设置里的 CLTC 决定。
         let cltc: Int? = nil
+        // 接口原始里程（不做换算）：诊断页要能对照「原始值 vs 显示值」
+        let odometerRaw: Int? = VehicleParse.number(vehicle["odometer"]).map { Int($0) }
         let odometer: Int? = {
             guard let n = VehicleParse.number(vehicle["odometer"]), n > 0 else { return nil }
             // 部分车型以 0.1 km 上报（2381 表示 238.1 km）；由设置里的开关决定
@@ -330,6 +332,7 @@ struct MG4Service {
                                address: address,
                                addrLat: addrLat, addrLng: addrLng,
                                fetchTime: Date(),
+                               odometerRaw: odometerRaw,
                                vehicleTime: vehicleTime,
                                positionTime: positionTime,
                                exteriorTemp: exteriorTemp,

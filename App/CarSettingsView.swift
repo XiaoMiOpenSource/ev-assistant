@@ -406,6 +406,11 @@ struct DiagnosticsView: View {
                 row("位置数据时间", snap?.positionTime.map(Self.fmt) ?? "—")
                 row("位置是否滞后", snap?.positionIsStale == true ? "是（超过 30 分钟）" : "否")
             }
+            Section("里程（单位核对）") {
+                row("接口原始 odometer", snap?.odometerRaw.map(String.init) ?? "—")
+                row("换算后显示", snap?.odometer.map { VehicleFormat.odometer($0) + " km" } ?? "—")
+                row("0.1 km 开关", SharedStore.loadConfig().odometerInDecikm ? "已打开（÷10）" : "已关闭（原值）")
+            }
             Section("定位质量") {
                 row("卫星数", snap?.satellites.map(String.init) ?? "—")
                 row("hdop", snap?.hdop.map(String.init) ?? "—")
