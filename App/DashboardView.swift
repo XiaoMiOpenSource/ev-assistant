@@ -351,7 +351,7 @@ struct DashboardView: View {
                         .foregroundColor(palette.sub)
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text(rangeText)
-                            .font(.system(size: 42, weight: .heavy, design: .rounded))
+                            .font(.system(size: rangeFontSize(rangeText), weight: .heavy, design: .rounded))
                             .foregroundColor(palette.text)
                             .monospacedDigit()
                             .lineLimit(1)
@@ -371,28 +371,30 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity)   // 右半区居中（文字也居中）
             }
 
-            // ④ 底行：总里程在左半区居中、VIN 在右半区居中，与③一致
-            HStack(alignment: .firstTextBaseline, spacing: Space.gap) {
+            // ④ 底行：总里程与 VIN 各占一行、各自撑满整卡宽度。
+            //    以前两者挤在同一行的左右两半，里程到 4 位以上就被压到三位数；
+            //    拆成两行后 6 位里程（如 123,456 km）与 17 位 VIN 都有整行空间。
+            VStack(spacing: 4) {
                 HStack(spacing: 5) {
                     Image(systemName: "road.lanes").font(.system(size: 10))
                     Text("\(VehicleFormat.odometer(snap.odometer)) km")
-                        .font(.system(size: 12))
+                        .font(.system(size: 12.5))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                 }
                 .foregroundColor(palette.sub)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity)   // 左半区居中
+                .frame(maxWidth: .infinity)
 
                 HStack(spacing: 5) {
                     Image(systemName: "number").font(.system(size: 10))
                     Text(vin.isEmpty ? "--" : vin)
-                        .font(.system(size: 12, design: .monospaced))
+                        .font(.system(size: 11, design: .monospaced))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.55)
                 }
-                .foregroundColor(palette.sub)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity)   // 右半区居中
+                .foregroundColor(palette.sub.opacity(0.9))
+                .frame(maxWidth: .infinity)
             }
         }
         // 横向留白比其它卡多 4pt：主卡内容贴到卡片边缘会显得局促，
@@ -401,6 +403,16 @@ struct DashboardView: View {
         .padding(.vertical, Space.card)
         .frame(maxWidth: .infinity, alignment: .leading)
         .dsCard()
+    }
+
+    /// 续航数字按位数选字号：3 位 42pt，4 位 36pt，5 位以上 30pt，保证不被裁掉
+    private func rangeFontSize(_ text: String) -> CGFloat {
+        switch text.count {
+        case 0...3: return 42
+        case 4: return 36
+        case 5: return 32
+        default: return 28
+        }
     }
 
     /// 数据新鲜度：车况接口每次刷新都会写 fetchTime

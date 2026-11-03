@@ -166,7 +166,8 @@ struct SmallLayout: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(palette.text)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(0.5)
+                    .layoutPriority(1)
                 Spacer(minLength: 0)
             }
             // 底部：电量条 + 百分比（低电量：条收窄让位，加红色「低电」胶囊）
@@ -274,7 +275,8 @@ struct MediumLayout: View {
                     .font(.system(size: valueSize, weight: .heavy, design: .rounded))
                     .foregroundColor(big ? palette.green : palette.text)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(0.45)
+                    .layoutPriority(1)      // 数值优先占宽：里程 6 位数不被挤成 3 位
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.system(size: 8))
@@ -500,7 +502,8 @@ struct LargeLayout: View {
                         .font(.system(size: 44, weight: .heavy, design: .rounded))
                         .foregroundColor(palette.text)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.5)
+                        .minimumScaleFactor(0.4)
+                        .layoutPriority(1)
                     Text("km")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(palette.sub)
@@ -531,7 +534,8 @@ struct LargeLayout: View {
                 .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                 .foregroundColor(palette.text)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.45)
+                .layoutPriority(1)          // 数值优先，6 位里程不被截断
         }
     }
 
