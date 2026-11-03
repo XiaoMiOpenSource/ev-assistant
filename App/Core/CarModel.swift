@@ -15,6 +15,17 @@ final class CarModel: ObservableObject {
     /// 电量历史版本号（每次成功抓取 +1，供界面按需重读历史）
     @Published var historyRevision = 0
 
+    init() {
+        // 自愈：旧版本把里程按 0.1 km 除以 10（2488 → 249），已废弃。
+        // 这里把历史快照就地改回接口原值，免得小组件继续显示旧数字。
+        if var s = snapshot, let raw = s.odometerRaw, raw > 0, s.odometer != raw {
+            s.odometer = raw
+            snapshot = s
+            SharedStore.saveSnapshot(s)
+            WidgetCenter.shared.reloadAllTimelines()   // 让桌面小组件立刻用修正后的数字重绘
+        }
+    }
+
     /// 手动/自动刷新：抓取车况 -> 写共享存储 -> 刷新小组件时间线
     func refresh() async {
         guard !config.needsSetup else {

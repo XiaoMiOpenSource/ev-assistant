@@ -192,10 +192,11 @@ struct MG4Service {
         let cltc: Int? = nil
         // 接口原始里程（不做换算）：诊断页要能对照「原始值 vs 显示值」
         let odometerRaw: Int? = VehicleParse.number(vehicle["odometer"]).map { Int($0) }
+        // 里程表：接口按 km 上报（实测 2488 = 2488 km），一律用原值。
+        // 旧版本有个「0.1 km ÷10」开关，会把 2488 显示成 249（248.8 四舍五入），已废弃。
         let odometer: Int? = {
             guard let n = VehicleParse.number(vehicle["odometer"]), n > 0 else { return nil }
-            // 部分车型以 0.1 km 上报（2381 表示 238.1 km）；由设置里的开关决定
-            return config.odometerInDecikm ? Int((n / 10).rounded()) : Int(n)
+            return Int(n)
         }()
 
         // --- 门锁 / 充电 / 门窗（状态为 true 即“打开/未关”，与原脚本一致）---

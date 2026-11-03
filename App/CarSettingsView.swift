@@ -140,7 +140,7 @@ struct CarSettingsView: View {
                     }
                 }
                 .padding(.vertical, 2)
-                Toggle("里程单位为 0.1 km（数值 ÷10）", isOn: $cfg.odometerInDecikm)
+
                 Toggle("充电会话自动记录", isOn: Binding(
                     get: { SharedStore.autoRecordEnabled },
                     set: { SharedStore.setAutoRecord($0) }
@@ -408,8 +408,7 @@ struct DiagnosticsView: View {
             }
             Section("里程（单位核对）") {
                 row("接口原始 odometer", snap?.odometerRaw.map(String.init) ?? "—")
-                row("换算后显示", snap?.odometer.map { VehicleFormat.odometer($0) + " km" } ?? "—")
-                row("0.1 km 开关", SharedStore.loadConfig().odometerInDecikm ? "已打开（÷10）" : "已关闭（原值）")
+                row("当前显示", snap?.odometer.map { VehicleFormat.odometer($0) + " km" } ?? "—")
             }
             Section("定位质量") {
                 row("卫星数", snap?.satellites.map(String.init) ?? "—")
